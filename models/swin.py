@@ -95,7 +95,7 @@ class SwinTransformer(nn.Module):
                 layers.append(downsample_layer(dim, norm_layer))
 
         # NOTE : self.features = nn.Sequential(*layers)
-        self.features = nn.ModuleList(*layers)
+        self.features = nn.ModuleList(layers)
 
         num_features = embed_dim * 2 ** (len(depths) - 1)
         self.norm = norm_layer(num_features)
