@@ -237,13 +237,13 @@ class SwinTransformer(nn.Module):
 
         x = self.patching(x)
         
-        encoder_stages = []
+        residuals = []
         for i in range(0, len(self.encoder), 2):
 
             print(x.shape)
 
             x = self.encoder[i](x) # Encoder Stage
-            encoder_stages.append(x)
+            residuals.append(x)
             if i+1 < (len(self.encoder) - 1) or self.final_downsample:
                 x = self.encoder[i+1](x) # Downsample (PatchMerge)
 
@@ -256,19 +256,25 @@ class SwinTransformer(nn.Module):
 
         print(x.shape)
 
-        for i in range(0, len(self.decoder), 2 + int(self.cross_attention_skip)):
+        print("DECODER")
+
+        for i_skip, i in zip(
+            range(len(self.encoder_stages)-1, 0, -1),
+            range(0, len(self.decoder), 2 + int(self.cross_attention_skip))
+        ):
 
             print(x.shape)
 
             if i > 0 or self.final_downsample:
                 x = self.decoder[i](x) # Upsample (PatchExpand)
-            
-            x = torch.cat((x, x), dim=-1) # Dumb Skip Connection
+
+            residual = residuals[i_skip]
+            if self.cross_attention_skip:
+                residual = self.decoder[i+1](residual) # Cross Attention Skip Connection
+
+            x = torch.cat((x, residual), dim=-1) # Dumb Skip Connection
 
             print(x.shape)
-
-            if self.cross_attention_skip:
-                x = self.decoder[i+1](x)
 
             x = self.decoder[i+(1 + int(self.cross_attention_skip))](x)
 
