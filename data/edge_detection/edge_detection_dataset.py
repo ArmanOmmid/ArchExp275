@@ -51,11 +51,11 @@ class EdgeDetectionDataset(torch.utils.data.Dataset):
             target = self.base_target_transform(target)
 
         if self.input_transform: 
-            image = self.input_transform(image)
+            input = self.input_transform(input)
         if self.target_transform: 
-            label = self.target_transform(label)
+            target = self.target_transform(target)
 
-        return image, label
+        return input, target
     
     def base_input_transform(self, x):
         x = torch.from_numpy(x)
