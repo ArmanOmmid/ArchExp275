@@ -102,6 +102,7 @@ class SwinTransformer(nn.Module):
         # downsample_layer: Callable[..., nn.Module] = PatchMergingV2,
         middle_stages: int = 1,
         final_downsample: bool = False,
+        cross_attention_skip: bool = False,
     ):
         super().__init__()
         _log_api_usage_once(self)
@@ -116,6 +117,7 @@ class SwinTransformer(nn.Module):
             norm_layer(embed_dim),
         )
 
+        self.cross_attention_skip = cross_attention_skip
         self.final_downsample = final_downsample
         total_stage_blocks = sum(depths)
 
@@ -185,7 +187,8 @@ class SwinTransformer(nn.Module):
             stage: List[nn.Module] = []
             dim = embed_dim * 2**i_stage
 
-            # stage.append() X-Attn Skip Connection
+            # if self.cross_attention_skip:
+            #   stage.append() X-Attn Skip Connection
 
             for i_layer in range(depths[i_stage]):
                 # "Dropout Scheduler" : adjust stochastic depth probability based on the depth of the stage block
@@ -197,7 +200,7 @@ class SwinTransformer(nn.Module):
 
                 stage.append(
                     SwinTransformerBlockV2(
-                        dim * (1 + (i_layer == 0)), # First Swin Block in Stage gets X-Attn Stacked
+                        dim * (1 + (i_layer == 0)), # First Swin Block in Decoder Stage gets Stacked
                         num_heads[i_stage],
                         window_size=window_size,
                         shift_size=[0 if i_layer % 2 == 0 else w // 2 for w in window_size],
@@ -237,19 +240,22 @@ class SwinTransformer(nn.Module):
 
             x = self.encoder[i](x) # Encoder Stage
             encoder_stages.append(x)
-            if self.final_downsample or i+1 < (len(self.encoder) - 1):
+            if i+1 < (len(self.encoder) - 1) or self.final_downsample:
                 x = self.encoder[i+1](x) # Downsample (PatchMerge)
 
         x = self.middle(x)
 
-        for i in range(0, len(self.decoder, 2)):
+        for i in range(0, len(self.decoder, 2 + int(self.cross_attention_skip))):
 
-            if self.final_downsample or i > 0:
+            if i > 0 or self.final_downsample:
                 x = self.decoder[i](x) # Upsample (PatchExpand)
             
             x = torch.cat((x, x), dim=-1) # Dumb Skip Connection
 
-            x = self.decoder[i+1](x)
+            if self.cross_attention_skip:
+                x = self.decoder[i+1](x)
+
+            x = self.decoder[i+(1 + int(self.cross_attention_skip))](x)
 
         # x = self.norm(x)
         # x = self.permute(x)
