@@ -183,7 +183,7 @@ class SwinTransformer(nn.Module):
 
         # stage_block_id = 0 # NOTE : Not reseting dropout scheduler
         # Decoder Swin Blocks
-        for i_stage in range(0, len(depths), -1): # Count Backwards!
+        for i_stage in range(len(depths)-1, 0, -1): # Count Backwards!
             stage: List[nn.Module] = []
             dim = embed_dim * 2**i_stage
 
@@ -201,7 +201,7 @@ class SwinTransformer(nn.Module):
                 stage.append(
                     SwinTransformerBlockV2(
                         dim * (1 + (i_layer == 0)), # First Swin Block in Decoder Stage gets Stacked
-                        num_heads[i_stage],
+                        num_heads[i_stage] * (1 + (i_layer == 0)), # Double heads in this case too
                         window_size=window_size,
                         shift_size=[0 if i_layer % 2 == 0 else w // 2 for w in window_size],
                         mlp_ratio=mlp_ratio,
@@ -245,22 +245,32 @@ class SwinTransformer(nn.Module):
             if i+1 < (len(self.encoder) - 1) or self.final_downsample:
                 x = self.encoder[i+1](x) # Downsample (PatchMerge)
 
-        *B, H, W, C = x.shape
-        x = x.continguous().view(*B, H*W, C)
-        x = self.middle(x)
-        x = x.continguous().view(*B, H, W, C)
+        print(x.shape)
 
-        for i in range(0, len(self.decoder, 2 + int(self.cross_attention_skip))):
+        *B, H, W, C = x.shape
+        x = x.contiguous().view(*B, H*W, C)
+        x = self.middle(x)
+        x = x.contiguous().view(*B, H, W, C)
+
+        print(x.shape)
+
+        for i in range(0, len(self.decoder), 2 + int(self.cross_attention_skip)):
+
+            print(x.shape)
 
             if i > 0 or self.final_downsample:
                 x = self.decoder[i](x) # Upsample (PatchExpand)
             
             x = torch.cat((x, x), dim=-1) # Dumb Skip Connection
 
+            print(x.shape)
+
             if self.cross_attention_skip:
                 x = self.decoder[i+1](x)
 
             x = self.decoder[i+(1 + int(self.cross_attention_skip))](x)
+
+            print(x.shape)
 
         # x = self.norm(x)
         # x = self.permute(x)
