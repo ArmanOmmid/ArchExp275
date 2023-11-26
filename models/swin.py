@@ -245,8 +245,10 @@ class SwinTransformer(nn.Module):
             if i+1 < (len(self.encoder) - 1) or self.final_downsample:
                 x = self.encoder[i+1](x) # Downsample (PatchMerge)
 
-        print(x.shape)
+        *B, H, W, C = x.shape
+        x = x.continguous().view(*B, H*W, C)
         x = self.middle(x)
+        x = x.continguous().view(*B, H, W, C)
 
         for i in range(0, len(self.decoder, 2 + int(self.cross_attention_skip))):
 
