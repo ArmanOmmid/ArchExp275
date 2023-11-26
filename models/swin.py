@@ -259,7 +259,7 @@ class SwinTransformer(nn.Module):
         print("DECODER")
 
         for i_skip, i in zip(
-            range(len(self.residuals)-1, 0, -1),
+            range(len(residuals)-1, 0, -1),
             range(0, len(self.decoder), 2 + int(self.cross_attention_skip))
         ):
 
