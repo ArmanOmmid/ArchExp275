@@ -96,7 +96,7 @@ class UniformTripletLayer(nn.Module):
         return self.layers(x)
 
 class UNet0(AbstractNet):
-    def __init__(self, channels=[32, 16, 8, 4], weights=None, device='cpu'):
+    def __init__(self, channels=[64, 128, 256, 512], weights=None, device='cpu'):
         super().__init__()
 
         assert len(channels) == 4, "UNet must 4 encoder layer channels defined"
