@@ -1,0 +1,2 @@
+
+from data.edge_detection.edge_detection_dataset import EdgeDetectionDataset
