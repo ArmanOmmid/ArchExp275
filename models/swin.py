@@ -4,10 +4,65 @@ from functools import partial
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from torchvision.utils import _log_api_usage_once
 from torchvision.ops.misc import MLP, Permute
 from torchvision.models.swin_transformer import SwinTransformerBlockV2, PatchMergingV2
+from torchvision.models.vision_transformer import EncoderBlock as ViTEncoderBlock
+
+def _pad_expansion(x: torch.Tensor, distributed: bool = False) -> torch.Tensor:
+    *B, H, W, C = x.shape
+    pad_c = (4 - C % 4) % 4  # Number of channels to add
+
+    # No padding needed
+    if pad_c == 0:
+        return x 
+    
+    if not distributed:
+        x = F.pad(x, (0, pad_c), "constant", 0)  # Pad with zeros to the end of channels
+        return x
+    else:
+        raise NotImplementedError()
+
+def _patch_expanding_pad(x: torch.Tensor) -> torch.Tensor:
+    *B, H_HALF, W_HALF, C_QUAD = x.shape
+
+    C = C_QUAD // 4
+
+    x = x.view(*B, H_HALF, W_HALF, 2, 2, C)
+
+    x = x.permute(0, 1, 3, 2, 4, 5).contiguous()
+
+    x = x.view(*B, H_HALF * 2, W_HALF * 2, C)
+
+    return x
+
+class PatchExpandingV2(nn.Module):
+    """Patch Expanding Layer for Swin Transformer V2.
+    Args:
+        dim (int): Number of input channels.
+        norm_layer (nn.Module): Normalization layer. Default: nn.LayerNorm.
+    """
+
+    def __init__(self, dim: int, norm_layer: Callable[..., nn.Module] = nn.LayerNorm):
+        super().__init__()
+        self.dim = dim # C
+        self.expansion = nn.Linear(dim, 2 * dim, bias=False) # Linear expansion first to share more information
+        self.norm = norm_layer(2 * dim)
+
+    def forward(self, x: torch.Tensor):
+        """
+        Args:
+            x (Tensor): input tensor with expected layout of [..., H, W, C]
+        Returns:
+            Tensor with layout of [..., H/2, W/2, 2*C]
+        """
+        # Linear expansion first to share more information
+        x = self.expansion(x)
+        x = self.norm(x)
+        x = _patch_expanding_pad(x)
+        return x
 
 class SwinTransformer(nn.Module):
     """
@@ -27,6 +82,7 @@ class SwinTransformer(nn.Module):
         block (nn.Module, optional): SwinTransformer Block. Default: None.
         norm_layer (nn.Module, optional): Normalization layer. Default: None.
         downsample_layer (nn.Module): Downsample layer (patch merging). Default: PatchMerging.
+        final_downsample (bool): Do a final downsampling for the encoder towards the mid-network
     """
 
     def __init__(
@@ -42,8 +98,10 @@ class SwinTransformer(nn.Module):
         stochastic_depth_prob: float = 0.1,
         num_classes: int = 1000,
         norm_layer: Optional[Callable[..., nn.Module]] = partial(nn.LayerNorm, eps=1e-5),
-        block: Optional[Callable[..., nn.Module]] = SwinTransformerBlockV2,
-        downsample_layer: Callable[..., nn.Module] = PatchMergingV2,
+        # swin_block: Optional[Callable[..., nn.Module]] = SwinTransformerBlockV2,
+        # downsample_layer: Callable[..., nn.Module] = PatchMergingV2,
+        middle_stages: int = 1,
+        final_downsample: bool = False,
     ):
         super().__init__()
         _log_api_usage_once(self)
@@ -58,19 +116,24 @@ class SwinTransformer(nn.Module):
             norm_layer(embed_dim),
         )
 
-        self.encoder : List[nn.Module] = []
+        self.final_downsample = final_downsample
         total_stage_blocks = sum(depths)
-        stage_block_id = 0
 
-        # build SwinTransformer blocks
+        ################################################
+        # ENCODER
+        ################################################
+        
+        self.encoder : List[nn.Module] = []
+        stage_block_id = 0
+        # Encoder Swin Blocks
         for i_stage in range(len(depths)):
             stage: List[nn.Module] = []
             dim = embed_dim * 2**i_stage
             for i_layer in range(depths[i_stage]):
                 # "Dropout Scheduler" : adjust stochastic depth probability based on the depth of the stage block
-                sd_prob = stochastic_depth_prob * float(stage_block_id) / (total_stage_blocks - 1)
+                sd_prob = stochastic_depth_prob * float(stage_block_id) / (2*total_stage_blocks - 1) # NOTE : Double
                 stage.append(
-                    block(
+                    SwinTransformerBlockV2(
                         dim,
                         num_heads[i_stage],
                         window_size=window_size,
@@ -84,22 +147,80 @@ class SwinTransformer(nn.Module):
                 )
                 stage_block_id += 1
             self.encoder.append(nn.Sequential(*stage))
-            # add patch merging layer
-            if i_stage < (len(depths) - 1):
-                self.encoder.append(downsample_layer(dim, norm_layer))
+            # Patch Merging Layer
+            if i_stage < (len(depths) - 1) or self.final_downsample:
+                self.encoder.append(PatchMergingV2(dim, norm_layer))
 
-        # NOTE : self.features = nn.Sequential(*self.encoder)
         self.encoder = nn.ModuleList(self.encoder)
+
+        current_features = embed_dim * 2 ** (len(depths) - int(not self.final_downsample))
+
+        ################################################
+        # MIDDLE
+        ################################################
+
+        self.middle : List[nn.Module] = []
+        for _ in range(min(1, middle_stages)):
+            self.middle.append(
+                ViTEncoderBlock(
+                    num_heads = num_heads[-1], # Use number of heads as final Swin Encoder Block
+                    hidden_dim = current_features,
+                    mlp_dim = int(current_features * mlp_ratio),
+                    dropout = dropout,
+                    attention_dropout = attention_dropout,
+                    norm_layer = norm_layer,
+                )
+            )
+        self.middle = nn.Sequential(*self.middle)
+
+        ################################################
+        # DECODER
+        ################################################
+
+        self.decoder : List[nn.Module] = []
+
+        # stage_block_id = 0 # NOTE : Not reseting dropout scheduler
+        # Decoder Swin Blocks
+        for i_stage in range(0, len(depths), -1): # Count Backwards!
+            stage: List[nn.Module] = []
+            dim = embed_dim * 2**i_stage
+
+            # stage.append() X-Attn Skip Connection
+
+            for i_layer in range(depths[i_stage]):
+                # "Dropout Scheduler" : adjust stochastic depth probability based on the depth of the stage block
+                sd_prob = stochastic_depth_prob * float(stage_block_id) / (2*total_stage_blocks - 1) # NOTE : Double
+
+                # add patch merging layer
+                if i_stage < (len(depths) - 1) or self.final_downsample:
+                    self.decoder.append(PatchMergingV2(dim, norm_layer))
+
+                stage.append(
+                    SwinTransformerBlockV2(
+                        dim * (1 + (i_layer == 0)), # First Swin Block in Stage gets X-Attn Stacked
+                        num_heads[i_stage],
+                        window_size=window_size,
+                        shift_size=[0 if i_layer % 2 == 0 else w // 2 for w in window_size],
+                        mlp_ratio=mlp_ratio,
+                        dropout=dropout,
+                        attention_dropout=attention_dropout,
+                        stochastic_depth_prob=sd_prob,
+                        norm_layer=norm_layer,
+                    )
+                )
+                stage_block_id += 1
+            self.decoder.append(nn.Sequential(*stage))
+
 
         # self.decoder : List[nn.Module] = []
         # stage_block_id = 0
 
-        num_features = embed_dim * 2 ** (len(depths) - 1)
-        self.norm = norm_layer(num_features)
-        self.permute = Permute([0, 3, 1, 2])  # B H W C -> B C H W
-        self.avgpool = nn.AdaptiveAvgPool2d(1)
-        self.flatten = nn.Flatten(1)
-        self.head = nn.Linear(num_features, num_classes)
+        # num_features = embed_dim * 2 ** (len(depths) - int(not self.final_downsample))
+        # self.norm = norm_layer(num_features)
+        # self.permute = Permute([0, 3, 1, 2])  # B H W C -> B C H W
+        # self.avgpool = nn.AdaptiveAvgPool2d(1)
+        # self.flatten = nn.Flatten(1)
+        # self.head = nn.Linear(num_features, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Linear):
@@ -112,20 +233,27 @@ class SwinTransformer(nn.Module):
         x = self.patching(x)
         
         encoder_stages = []
-        for i in range(1, len(self.encoder), 2):
-            encoder_stage = self.encoder[i-1]
-            downsample = self.encoder[i]
+        for i in range(0, len(self.encoder), 2):
 
-            x = encoder_stage(x)
+            x = self.encoder[i](x) # Encoder Stage
             encoder_stages.append(x)
-            x = downsample(x)
+            if self.final_downsample or i+1 < (len(self.encoder) - 1):
+                x = self.encoder[i+1](x) # Downsample (PatchMerge)
 
-            print(encoder_stage)
-            print(downsample)
+        x = self.middle(x)
 
-        x = self.norm(x)
-        x = self.permute(x)
-        x = self.avgpool(x)
-        x = self.flatten(x)
-        x = self.head(x)
+        for i in range(0, len(self.decoder, 2)):
+
+            if self.final_downsample or i > 0:
+                x = self.decoder[i](x) # Upsample (PatchExpand)
+            
+            x = torch.cat((x, x), dim=-1) # Dumb Skip Connection
+
+            x = self.decoder[i+1](x)
+
+        # x = self.norm(x)
+        # x = self.permute(x)
+        # x = self.avgpool(x)
+        # x = self.flatten(x)
+        # x = self.head(x)
         return x
