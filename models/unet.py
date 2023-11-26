@@ -3,8 +3,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from _network import _Network
-from modules.convolution_triplet_layer import ConvolutionTripletLayer
+from ._network import _Network
+from .modules.convolution_triplet_layer import ConvolutionTripletLayer
 
 class UNet(_Network):
     def __init__(self, channels=[64, 128, 256, 512], weights=None):
