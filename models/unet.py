@@ -1,12 +1,13 @@
 
+import numpy as np
 import torch
 import torch.nn as nn
 
 from _network import _Network
-from blocks.convolution_triplet_layer import ConvolutionTripletLayer
+from modules.convolution_triplet_layer import ConvolutionTripletLayer
 
 class UNet(_Network):
-    def __init__(self, channels=[32, 16, 8, 4], weights=None, device='cpu'):
+    def __init__(self, channels=[64, 128, 256, 512], weights=None):
         super().__init__()
 
         assert len(channels) == 4, "UNet must 4 encoder layer channels defined"
@@ -36,9 +37,7 @@ class UNet(_Network):
 
         self.load(weights)
 
-        self.to(device)
-
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         x1 = self.encoder_1(x)
         x2 = self.encoder_2(self.maxpool(x1))
         x3 = self.encoder_3(self.maxpool(x2))
@@ -59,3 +58,21 @@ class UNet(_Network):
         y = self.segmentation_head(y1)
         y = y.squeeze(1)
         return y
+
+    def predict(self, x: torch.Tensor, sharp=False):
+        self.eval()
+        with torch.no_grad():
+
+            x = x.unsqueeze(0)
+            x = self(x)
+            x = torch.sigmoid(x)
+            x = x.cpu()
+            x = x.squeeze(0)
+
+            x = x.numpy()
+            if sharp:
+                x = np.where(x < 0.5, 0, 1)
+            x = (x * 255).astype(np.uint8)
+
+        self.train()
+        return x
