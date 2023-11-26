@@ -93,7 +93,9 @@ class SwinTransformer(nn.Module):
             # add patch merging layer
             if i_stage < (len(depths) - 1):
                 layers.append(downsample_layer(dim, norm_layer))
-        self.features = nn.Sequential(*layers)
+
+        # NOTE : self.features = nn.Sequential(*layers)
+        self.features = nn.ModuleList(*layers)
 
         num_features = embed_dim * 2 ** (len(depths) - 1)
         self.norm = norm_layer(num_features)
@@ -109,7 +111,10 @@ class SwinTransformer(nn.Module):
                     nn.init.zeros_(m.bias)
 
     def forward(self, x):
-        x = self.features(x)
+        
+        for layer in self.features:
+            x = layer(x)
+
         x = self.norm(x)
         x = self.permute(x)
         x = self.avgpool(x)
