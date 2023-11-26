@@ -260,7 +260,7 @@ class SwinTransformer(nn.Module):
 
         for i_residual, i in zip(
             range(len(residuals)-1, 0, -1), # Count backwards for residual indices 
-            range(0 - int(self.final_downsample), len(self.decoder), 2 + int(self.cross_attention_skip))
+            range(0 - int(not self.final_downsample), len(self.decoder), 2 + int(self.cross_attention_skip))
         ):
 
             print(x.shape)
