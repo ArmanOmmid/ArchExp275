@@ -33,8 +33,8 @@ class EdgeDetectionDataset(torch.utils.data.Dataset):
             for input, target in zip(inputs, targets):
                 self.inputs.append(self.base_input_transform(input))
                 self.targets.append(self.base_target_transform(target))
-            self.inputs = torch.tensor(self.inputs, dtype=torch.Tensor)
-            self.targets = torch.tensor(self.targets, dtype=torch.Tensor)
+            self.inputs = torch.tensor(self.inputs)
+            self.targets = torch.tensor(self.targets)
 
         self.input_transform = input_transform
         self.target_transform = target_transform
