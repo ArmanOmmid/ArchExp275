@@ -7,8 +7,8 @@ from abc import ABC
 from datetime import datetime
 
 DIR_PATH = os.path.dirname(__file__)
-TRAIN_PATH = os.path.join(DIR_PATH, "npz", "train.py")
-TEST_PATH = os.path.join(DIR_PATH, "npz", "test.py")
+TRAIN_PATH = os.path.join(DIR_PATH, "npz", "train.npz")
+TEST_PATH = os.path.join(DIR_PATH, "npz", "test.npz")
 
 class EdgeDetectionDataset(torch.utils.data.Dataset):
     def __init__(self, train=True, eager_transform=True, input_transform=None, target_transform=None):
