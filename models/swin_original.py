@@ -7,7 +7,7 @@ import torch.nn as nn
 
 from torchvision.utils import _log_api_usage_once
 from torchvision.ops.misc import MLP, Permute
-from torchvision.models.swin_transformer import SwinTransformerBlockV2, PatchMergingV2
+from torchvision.models.swin_transformer import SwinTransformerBlockV2, PatchMergingV2, SwinTransformerBlock, PatchMerging
 
 class SwinTransformer(nn.Module):
     """
@@ -41,33 +41,39 @@ class SwinTransformer(nn.Module):
         attention_dropout: float = 0.0,
         stochastic_depth_prob: float = 0.1,
         num_classes: int = 1000,
-        norm_layer: Optional[Callable[..., nn.Module]] = partial(nn.LayerNorm, eps=1e-5),
-        block: Optional[Callable[..., nn.Module]] = SwinTransformerBlockV2,
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+        block: Optional[Callable[..., nn.Module]] = None,
         downsample_layer: Callable[..., nn.Module] = PatchMergingV2,
     ):
         super().__init__()
         _log_api_usage_once(self)
         self.num_classes = num_classes
 
+        if block is None:
+            block = SwinTransformerBlockV2
+        if norm_layer is None:
+            norm_layer = partial(nn.LayerNorm, eps=1e-5)
+
+        layers: List[nn.Module] = []
         # split image into non-overlapping patches
-        self.patching = nn.Sequential(
-            nn.Conv2d(
-                3, embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
-            ),
-            Permute([0, 2, 3, 1]), # B C H W -> B H W C
-            norm_layer(embed_dim),
+        layers.append(
+            nn.Sequential(
+                nn.Conv2d(
+                    3, embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
+                ),
+                Permute([0, 2, 3, 1]),
+                norm_layer(embed_dim),
+            )
         )
 
-        self.encoder : List[nn.Module] = []
         total_stage_blocks = sum(depths)
         stage_block_id = 0
-
         # build SwinTransformer blocks
         for i_stage in range(len(depths)):
             stage: List[nn.Module] = []
             dim = embed_dim * 2**i_stage
             for i_layer in range(depths[i_stage]):
-                # "Dropout Scheduler" : adjust stochastic depth probability based on the depth of the stage block
+                # adjust stochastic depth probability based on the depth of the stage block
                 sd_prob = stochastic_depth_prob * float(stage_block_id) / (total_stage_blocks - 1)
                 stage.append(
                     block(
@@ -83,16 +89,13 @@ class SwinTransformer(nn.Module):
                     )
                 )
                 stage_block_id += 1
-            self.encoder.append(nn.Sequential(*stage))
+            layers.append(nn.Sequential(*stage))
             # add patch merging layer
             if i_stage < (len(depths) - 1):
-                self.encoder.append(downsample_layer(dim, norm_layer))
+                layers.append(downsample_layer(dim, norm_layer))
 
-        # NOTE : self.features = nn.Sequential(*self.encoder)
-        self.encoder = nn.ModuleList(self.encoder)
-
-        # self.decoder : List[nn.Module] = []
-        # stage_block_id = 0
+        # NOTE : self.features = nn.Sequential(*layers)
+        self.features = nn.ModuleList(layers)
 
         num_features = embed_dim * 2 ** (len(depths) - 1)
         self.norm = norm_layer(num_features)
@@ -108,20 +111,10 @@ class SwinTransformer(nn.Module):
                     nn.init.zeros_(m.bias)
 
     def forward(self, x):
-
-        x = self.patching(x)
         
-        encoder_stages = []
-        for i in range(1, len(self.encoder), 2):
-            encoder_stage = self.encoder[i-1]
-            downsample = self.encoder[i]
-
-            x = encoder_stage(x)
-            encoder_stages.append(x)
-            x = downsample(x)
-
-            print(encoder_stage)
-            print(downsample)
+        for layer in self.features:
+            print(x.shape, "\n", layer, "\n")
+            x = layer(x)
 
         x = self.norm(x)
         x = self.permute(x)
