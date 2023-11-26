@@ -58,21 +58,3 @@ class UNet(_Network):
         y = self.segmentation_head(y1)
         y = y.squeeze(1)
         return y
-
-    def predict(self, x: torch.Tensor, sharp=False):
-        self.eval()
-        with torch.no_grad():
-
-            x = x.unsqueeze(0)
-            x = self(x)
-            x = torch.sigmoid(x)
-            x = x.cpu()
-            x = x.squeeze(0)
-
-            x = x.numpy()
-            if sharp:
-                x = np.where(x < 0.5, 0, 1)
-            x = (x * 255).astype(np.uint8)
-
-        self.train()
-        return x
