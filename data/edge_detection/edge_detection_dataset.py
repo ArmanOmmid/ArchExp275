@@ -18,7 +18,7 @@ class EdgeDetectionDataset(torch.utils.data.Dataset):
         else:
             npz = np.load(TEST_PATH)
 
-        self.raw_data = npz
+        self.raw = npz
         self.eager_transform = eager_transform
         
         inputs = npz["images"]  # array with shape (N,Width,Height,3)
@@ -67,4 +67,3 @@ class EdgeDetectionDataset(torch.utils.data.Dataset):
         x = torch.from_numpy(x)
         x = x.float() / 255
         return x
-    
