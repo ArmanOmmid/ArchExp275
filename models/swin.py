@@ -113,6 +113,7 @@ class SwinTransformer(nn.Module):
     def forward(self, x):
         
         for layer in self.features:
+            print(layer, "\n", x.shape)
             x = layer(x)
 
         x = self.norm(x)
