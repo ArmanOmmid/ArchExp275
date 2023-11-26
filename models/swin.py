@@ -59,7 +59,9 @@ class PatchExpandingV2(nn.Module):
             Tensor with layout of [..., H/2, W/2, 2*C]
         """
         # Linear expansion first to share more information
+        print(x.shape)
         x = self.expansion(x)
+        print(x.shape)
         x = self.norm(x)
         x = _patch_expanding_pad(x)
         return x
@@ -196,7 +198,7 @@ class SwinTransformer(nn.Module):
 
                 # add patch merging layer
                 if i_stage < (len(depths) - 1) or self.final_downsample:
-                    self.decoder.append(PatchMergingV2(dim, norm_layer))
+                    self.decoder.append(PatchExpandingV2(dim, norm_layer))
 
                 stage.append(
                     SwinTransformerBlockV2(
