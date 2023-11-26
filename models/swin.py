@@ -238,11 +238,14 @@ class SwinTransformer(nn.Module):
         encoder_stages = []
         for i in range(0, len(self.encoder), 2):
 
+            print(x.shape)
+
             x = self.encoder[i](x) # Encoder Stage
             encoder_stages.append(x)
             if i+1 < (len(self.encoder) - 1) or self.final_downsample:
                 x = self.encoder[i+1](x) # Downsample (PatchMerge)
 
+        print(x.shape)
         x = self.middle(x)
 
         for i in range(0, len(self.decoder, 2 + int(self.cross_attention_skip))):
