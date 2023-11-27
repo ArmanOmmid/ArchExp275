@@ -6,10 +6,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torchvision.utils import _log_api_usage_once
 from torchvision.ops.misc import MLP, Permute
 from torchvision.models.swin_transformer import SwinTransformerBlockV2, PatchMergingV2
 from torchvision.models.vision_transformer import EncoderBlock as ViTEncoderBlock
+
+from _network import _Network
 
 def _pad_expansion(x: torch.Tensor, distributed: bool = False) -> torch.Tensor:
     *B, H, W, C = x.shape
@@ -77,7 +78,7 @@ class PointwiseConvolution(nn.Module):
     def forward(self, x):
         return self.pointwise(x)
 
-class XNetSwinTransformer(nn.Module):
+class XNetSwinTransformer(_Network):
     """
     Implements Swin Transformer from the `"Swin Transformer: Hierarchical Vision Transformer using
     Shifted Windows" <https://arxiv.org/abs/2103.14030>`_ paper.
@@ -118,7 +119,6 @@ class XNetSwinTransformer(nn.Module):
         cross_attention_skip: bool = False,
     ):
         super().__init__()
-        _log_api_usage_once(self)
         self.num_classes = num_classes
 
         # split image into non-overlapping patches
