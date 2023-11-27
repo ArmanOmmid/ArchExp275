@@ -360,6 +360,8 @@ class XNetSwinTransformer(_Network):
             if self.residual_cross_attention:
                 residual = self.decoder[i+1](x, residual) # Cross Attention Skip Connection
 
+                print(x.shape, residual.shape)
+
             x = torch.cat((x, residual), dim=-1) # Dumb Skip Connection
 
             x = self.decoder[i+(1 + int(self.residual_cross_attention))](x)
