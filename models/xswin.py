@@ -11,6 +11,7 @@ from torchvision.models.swin_transformer import SwinTransformerBlockV2, PatchMer
 from torchvision.models.vision_transformer import EncoderBlock as ViTEncoderBlock
 
 from ._network import _Network
+from .modules.convolution_triplet_layer import ConvolutionTripletLayer
 
 def _pad_expansion(x: torch.Tensor, distributed: bool = False) -> torch.Tensor:
     *B, H, W, C = x.shape
@@ -122,7 +123,10 @@ class XNetSwinTransformer(_Network):
         super().__init__()
         self.num_classes = num_classes
 
-        # split image into non-overlapping patches
+        # Smooth Patch Partitioning
+
+        self.smooth_conv_in = ConvolutionTripletLayer(3, embed_dim, kernel_size=3)
+
         self.patching = nn.Sequential(
             nn.Conv2d(
                 3, embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
@@ -244,6 +248,9 @@ class XNetSwinTransformer(_Network):
             nn.BatchNorm2d(embed_dim, eps=1e-5), # NOTE : Swapped out from LayerNorm because we are Conv-ing
         )
 
+        # This will concatonate
+        self.smooth_conv_out = ConvolutionTripletLayer(2*embed_dim, embed_dim, kernel_size=3)
+
         self.head = PointwiseConvolution(embed_dim, num_classes, channel_last=False)
 
         for m in self.modules():
@@ -256,7 +263,9 @@ class XNetSwinTransformer(_Network):
 
     def forward(self, x):
 
-        x = self.patching(x)
+        conv_residual = self.smooth_conv_in(x)
+    
+        x = self.patching(conv_residual)
         
         residuals = []
         for i in range(0, len(self.encoder), 2):
@@ -288,6 +297,10 @@ class XNetSwinTransformer(_Network):
             x = self.decoder[i+(1 + int(self.cross_attention_skip))](x)
 
         x = self.unpatching(x)
+
+        x = torch.cat((x, conv_residual), dim=-3) # ..., C, H, W
+
+        x = self.smooth_conv_out(x)
 
         x = self.head(x)
 
