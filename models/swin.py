@@ -149,8 +149,6 @@ class SwinTransformer(nn.Module):
             stage: List[nn.Module] = []
             dim = embed_dim * 2**i_stage
 
-            print(i_stage)
-
             for i_layer in range(depths[i_stage]):
                 # "Dropout Scheduler" : adjust stochastic depth probability based on the depth of the stage block
                 sd_prob = stochastic_depth_prob * float(stage_block_id) / (2*total_stage_blocks - 1) # NOTE : Double
@@ -207,8 +205,6 @@ class SwinTransformer(nn.Module):
             stage: List[nn.Module] = []
             dim = embed_dim * 2**i_stage
 
-            print(i_stage)
-
             # if self.cross_attention_skip:
             #   stage.append() X-Attn Skip Connection
 
@@ -264,30 +260,20 @@ class SwinTransformer(nn.Module):
         residuals = []
         for i in range(0, len(self.encoder), 2):
 
-            print(x.shape)
-
             x = self.encoder[i](x) # Encoder Stage
             residuals.append(x)
             if i+1 < (len(self.encoder) - 1) or self.final_downsample:
                 x = self.encoder[i+1](x) # Downsample (PatchMerge)
-
-        print(x.shape)
 
         *B, H, W, C = x.shape
         x = x.contiguous().view(*B, H*W, C)
         x = self.middle(x)
         x = x.contiguous().view(*B, H, W, C)
 
-        print(x.shape)
-
-        print("DECODER")
-
         for i_residual, i in zip(
             range(len(residuals)-1, -1, -1), # Count backwards for residual indices 
             range(0 - int(not self.final_downsample), len(self.decoder), 2 + int(self.cross_attention_skip))
         ):
-
-            print(x.shape)
 
             if i > 0 or self.final_downsample:
                 x = self.decoder[i](x) # Upsample (PatchExpand)
@@ -298,11 +284,7 @@ class SwinTransformer(nn.Module):
 
             x = torch.cat((x, residual), dim=-1) # Dumb Skip Connection
 
-            print(x.shape)
-
             x = self.decoder[i+(1 + int(self.cross_attention_skip))](x)
-
-            print(x.shape)
 
         # x = self.norm(x)
         # x = self.permute(x)
