@@ -126,22 +126,39 @@ def _extract_windows(feature_map, window_height, window_width, stride_height=Non
 
 
 class SwinResidualCrossAttention(nn.Module):
-    def __init__(self, window_size, embed_dim, num_heads, attention_dropout, *args, **kwargs) -> None:
+    def __init__(self, 
+                 window_size, 
+                 embed_dim, 
+                 num_heads,
+                 stride = [None, None],
+                 attention_dropout = 0.0, 
+                 norm_layer = partial(nn.LayerNorm, eps=1e-5),
+                 *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         assert len(window_size) == 2
+        if not stride[0] == stride[1] == None: 
+            raise NotImplementedError("Striding is not implemented (or wanted)") # -Arman
+
         self.window_height, self.window_width = window_size
+        self.stride_height = stride[0] if stride is not None else window_size[0]
+        self.stride_width = stride[1] if stride is not None else window_size[1]
+
+        self.norm_x = norm_layer(embed_dim)
+        self.norm_residual = norm_layer(embed_dim)
         self.cross_attention = nn.MultiheadAttention(embed_dim, num_heads, dropout=attention_dropout, batch_first=True)
 
     def forward(self, x, residual):
 
+        x, residual = self.norm_x(x), self.norm_residual(residual)
+
         x_context, _, _ = _extract_windows(x, self.window_height, self.window_width)
-        residual_context, pad_height, pad_width = _extract_windows(residual, self.window_height, self.window_width)
+        residual_context, pad_height, pad_width = _extract_windows(residual, self.window_height, self.window_width,
+                                                                   self.stride_height, self.stride_width)
 
         assert x_context.shape == residual_context.shape, f"{x_context.shape} != {residual_context.shape}"
 
         *B, H, W, WINDOW, C = residual_context.shape
-
 
         Q = x_context.reshape(-1, WINDOW, C)
         K = V = residual_context.reshape(-1, WINDOW, C)
@@ -198,8 +215,6 @@ class XNetSwinTransformer(_Network):
         stochastic_depth_prob: float = 0.1,
         num_classes: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = partial(nn.LayerNorm, eps=1e-5),
-        # swin_block: Optional[Callable[..., nn.Module]] = SwinTransformerBlockV2,
-        # downsample_layer: Callable[..., nn.Module] = PatchMergingV2,
         middle_stages: int = 1,
         final_downsample: bool = False,
         residual_cross_attention: bool = True,
@@ -298,8 +313,9 @@ class XNetSwinTransformer(_Network):
 
             if self.residual_cross_attention:
               self.decoder.append(
-                SwinResidualCrossAttention(window_size=window_size, embed_dim=dim, num_heads=num_heads[i_stage], attention_dropout=attention_dropout)
-              )
+                SwinResidualCrossAttention(window_size=window_size, embed_dim=dim, 
+                                           num_heads=num_heads[i_stage], attention_dropout=attention_dropout,
+                                           norm_layer=norm_layer))
 
             for i_layer in range(depths[i_stage]):
                 # "Dropout Scheduler" : adjust stochastic depth probability based on the depth of the stage block
