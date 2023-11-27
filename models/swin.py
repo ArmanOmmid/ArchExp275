@@ -203,16 +203,16 @@ class SwinTransformer(nn.Module):
             stage: List[nn.Module] = []
             dim = embed_dim * 2**i_stage
 
+            # add patch merging layer
+            if i_stage < (len(depths) - 1) or self.final_downsample:
+                self.decoder.append(PatchExpandingV2(2*dim, norm_layer)) # NOTE : Double input dim
+
             # if self.cross_attention_skip:
             #   stage.append() X-Attn Skip Connection
 
             for i_layer in range(depths[i_stage]):
                 # "Dropout Scheduler" : adjust stochastic depth probability based on the depth of the stage block
                 sd_prob = stochastic_depth_prob * float(stage_block_id) / (2*total_stage_blocks - 1) # NOTE : Double
-
-                # add patch merging layer
-                if i_stage < (len(depths) - 1) or self.final_downsample:
-                    self.decoder.append(PatchExpandingV2(2*dim, norm_layer)) # NOTE : Double input dim
 
                 stage.append(
                     SwinTransformerBlockV2(
@@ -270,6 +270,8 @@ class SwinTransformer(nn.Module):
         x = x.contiguous().view(*B, H*W, C)
         x = self.middle(x)
         x = x.contiguous().view(*B, H, W, C)
+
+        print(self.decoder)
 
         for i_residual, i in zip(
             range(len(residuals)-1, -1, -1), # Count backwards for residual indices 
