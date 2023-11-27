@@ -129,7 +129,7 @@ class XNetSwinTransformer(_Network):
 
         self.patching = nn.Sequential(
             nn.Conv2d(
-                3, embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
+                embed_dim, embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
             ),
             Permute([0, 2, 3, 1]), # B C H W -> B H W C
             norm_layer(embed_dim),
