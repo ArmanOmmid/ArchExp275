@@ -145,8 +145,12 @@ class SwinTransformer(nn.Module):
         stage_block_id = 0
         # Encoder Swin Blocks
         for i_stage in range(len(depths)):
+
             stage: List[nn.Module] = []
             dim = embed_dim * 2**i_stage
+
+            print(i_stage)
+
             for i_layer in range(depths[i_stage]):
                 # "Dropout Scheduler" : adjust stochastic depth probability based on the depth of the stage block
                 sd_prob = stochastic_depth_prob * float(stage_block_id) / (2*total_stage_blocks - 1) # NOTE : Double
@@ -199,9 +203,11 @@ class SwinTransformer(nn.Module):
 
         # stage_block_id = 0 # NOTE : Not reseting dropout scheduler
         # Decoder Swin Blocks
-        for i_stage in range(len(depths)-1, 0, -1): # NOTE : Count Backwards!
+        for i_stage in range(len(depths)-1, -1, -1): # NOTE : Count Backwards!
             stage: List[nn.Module] = []
             dim = embed_dim * 2**i_stage
+
+            print(i_stage)
 
             # if self.cross_attention_skip:
             #   stage.append() X-Attn Skip Connection
@@ -277,7 +283,7 @@ class SwinTransformer(nn.Module):
         print("DECODER")
 
         for i_residual, i in zip(
-            range(len(residuals)-1, 0, -1), # Count backwards for residual indices 
+            range(len(residuals)-1, -1, -1), # Count backwards for residual indices 
             range(0 - int(not self.final_downsample), len(self.decoder), 2 + int(self.cross_attention_skip))
         ):
 
