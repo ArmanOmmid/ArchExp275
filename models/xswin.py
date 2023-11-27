@@ -117,6 +117,7 @@ class XNetSwinTransformer(_Network):
         middle_stages: int = 1,
         final_downsample: bool = False,
         cross_attention_skip: bool = False,
+        weights=None,
     ):
         super().__init__()
         self.num_classes = num_classes
@@ -250,6 +251,8 @@ class XNetSwinTransformer(_Network):
                 nn.init.trunc_normal_(m.weight, std=0.02)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
+
+        self.load(weights)
 
     def forward(self, x):
 
