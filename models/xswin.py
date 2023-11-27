@@ -119,7 +119,7 @@ class SwinResidualCrossAttention(nn.Module):
     def __init__(self, window_size, embed_dim, num_heads, attention_dropout, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        assert len(window_size.shape) == 2
+        assert len(window_size) == 2
         self.window_height, self.window_width = window_size
         self.cross_attention = nn.MultiheadAttention(embed_dim, num_heads, dropout=attention_dropout, batch_first=True)
 
@@ -276,7 +276,7 @@ class XNetSwinTransformer(_Network):
                 self.decoder.append(PatchExpandingV2(2*dim, norm_layer)) # NOTE : Double input dim
 
             if self.cross_attention_residual:
-              stage.append(
+              self.decoder.append(
                 SwinResidualCrossAttention(window_size=window_size, embed_dim=dim, num_heads=num_heads[i_stage], attention_dropout=attention_dropout)
               )
 
