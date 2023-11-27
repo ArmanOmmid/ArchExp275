@@ -275,11 +275,16 @@ class SwinTransformer(nn.Module):
             range(len(residuals)-1, -1, -1), # Count backwards for residual indices 
             range(0 - int(not self.final_downsample), len(self.decoder), 2 + int(self.cross_attention_skip))
         ):
-
+            print(i)
+            print(".////")
+            print(x.shape)
+            print(self.decoder[i])
             if i > 0 or self.final_downsample:
                 x = self.decoder[i](x) # Upsample (PatchExpand)
 
             residual = residuals[i_residual]
+            print(x.shape)
+            print(residual.shape)
             if self.cross_attention_skip:
                 residual = self.decoder[i+1](residual) # Cross Attention Skip Connection
 
