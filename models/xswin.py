@@ -10,8 +10,8 @@ from torchvision.ops.misc import MLP, Permute
 from torchvision.models.swin_transformer import SwinTransformerBlockV2, PatchMergingV2
 from torchvision.models.vision_transformer import EncoderBlock as ViTEncoderBlock
 
-from ._network import _Network
-from .modules.convolution_triplet_layer import ConvolutionTripletLayer
+from _network import _Network
+from modules.convolution_triplet_layer import ConvolutionTripletLayer
 
 def _pad_expansion(x: torch.Tensor, distributed: bool = False) -> torch.Tensor:
     *B, H, W, C = x.shape
@@ -79,27 +79,53 @@ class PointwiseConvolution(nn.Module):
     def forward(self, x):
         return self.pointwise(x)
 
-def extract_windows(feature_map, window_size, stride):
+def extract_windows(feature_map, window_height, window_width, stride_height=None, stride_width=None):
     """
-    Extract local windows from a feature map.
-    
+    Extract local windows from a feature map for non-square windows and flatten them.
+
     Parameters:
-    - feature_map: the input feature map, shape [B, C, H, W]
-    - window_size: the size of the window (assuming a square window)
-    - stride: the stride of the windows across the feature map
-    
+    - feature_map: the input feature map, shape [B*, H, W, C]
+    - window_height: the height of the window
+    - window_width: the width of the window
+    - stride_height: the stride of the windows across the height of the feature map
+    - stride_width: the stride of the windows across the width of the feature map
+
     Returns:
-    - windows: the local windows, shape [B, num_windows, C, window_size, window_size]
+    - windows: the local windows ready for attention, shape [B*, Window, S, C]
     """
-    # Unfold the feature map into windows
-    unfolded = feature_map.unfold(2, window_size, stride).unfold(3, window_size, stride)
+
+    if stride_height is None:
+        stride_height = window_height
+    if stride_width is None:
+        stride_width = window_width
     
-    # Reshape to get the windows into separate dimensions
-    # After unfold, shape is [B, C, H_unfolded, W_unfolded, window_size, window_size]
-    B, C, H_unfolded, W_unfolded, _, _ = unfolded.shape
-    windows = unfolded.contiguous().view(B, C, -1, window_size, window_size).permute(0, 2, 1, 3, 4)
-    
+    *B, H, W, C = feature_map.shape
+    # Unfold the feature map into windows for both dimensions
+    unfolded_height = feature_map.unfold(-3, window_height, stride_height) # New dim (from H) created at the end
+    unfolded_both = unfolded_height.unfold(-3, window_width, stride_width) # So we do -3 again for W
+
+    # Send C to the back
+    windows = unfolded_both.permute(0, -5, -4, -2, -1, -3)
+
+    # The shape after unfold will be [B*, H_unfolded, W_unfolded, window_height, window_width, C]
+    *B, H_unfolded, W_unfolded, H_window, W_window, C = windows.shape
+    # We need [*B, H_unfolded, W_unfolded, <WindowContext>, C]
+    windows = windows.contiguous().view(*B, H_unfolded, W_unfolded, window_height * window_width, C) 
+
     return windows
+
+# # Example usage
+# B = 1  # Batch size or any number of additional dimensions
+# H, W, C = 128, 128, 64  # Height, Width, Channels
+# feature_map = torch.randn(B, H, W, C)
+# window_height, window_width = 8, 4
+# stride_height, stride_width = 4, 2
+
+# local_windows = extract_windows(feature_map, window_height, window_width, stride_height, stride_width)
+# print(local_windows.shape)  # Expected shape: [B, num_windows, S, C] where S = window_height * window_width
+
+# # Now local_windows can be fed to an attention mechanism
+
 
 class SwinResidualCrossAttention():
     pass
@@ -334,3 +360,28 @@ class XNetSwinTransformer(_Network):
             x = x.squeeze(1)
 
         return x
+
+
+# import torch
+# import torch.nn.functional as F
+
+# # Assume feature_map is the input tensor of shape [batch_size, channels, height, width]
+# # Assume window_size is the size of the square window (e.g., 7 for a 7x7 window)
+
+# batch_size, channels, height, width = feature_map.shape
+# window_area = window_size * window_size
+
+# # Step 1: Partition the feature map into windows
+# windows = feature_map.unfold(2, window_size, window_size).unfold(3, window_size, window_size)
+# windows = windows.contiguous().view(batch_size, channels, -1, window_area)  # [B, C, num_windows, window_area]
+
+# # Step 2: Flatten and concatenate
+# windows = windows.permute(0, 2, 1, 3).contiguous().view(-1, channels, window_area)  # [B*num_windows, C, window_area]
+
+# # Step 3: Compute MSA in parallel for all windows
+# # self_attn is a layer/module that computes multihead self-attention
+# attn_windows = self_attn(windows)  # [B*num_windows, C, window_area]
+
+# # Step 4: Reshape and merge back to the original feature map shape
+# attn_windows = attn_windows.view(batch_size, -1, channels, window_area).permute(0, 2, 1, 3)
+# attn_feature_map = F.fold(attn_windows, output_size=(height, width), kernel_size=(window_size, window_size))
