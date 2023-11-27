@@ -181,7 +181,7 @@ class XNetSwinTransformer(_Network):
         # downsample_layer: Callable[..., nn.Module] = PatchMergingV2,
         middle_stages: int = 1,
         final_downsample: bool = False,
-        cross_attention_residual: bool = False,
+        cross_attention_residual: bool = True,
         weights=None,
     ):
         super().__init__()
