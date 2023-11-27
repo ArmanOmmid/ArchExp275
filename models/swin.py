@@ -110,7 +110,7 @@ class SwinTransformer(nn.Module):
         dropout: float = 0.0,
         attention_dropout: float = 0.0,
         stochastic_depth_prob: float = 0.1,
-        num_classes: int = 1000,
+        num_classes: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = partial(nn.LayerNorm, eps=1e-5),
         # swin_block: Optional[Callable[..., nn.Module]] = SwinTransformerBlockV2,
         # downsample_layer: Callable[..., nn.Module] = PatchMergingV2,
@@ -236,6 +236,16 @@ class SwinTransformer(nn.Module):
 
         self.decoder = nn.ModuleList(self.decoder)
 
+        self.unpatching = nn.Sequential(
+            Permute([0, 3, 1, 2]), # B H W C -> B C H W
+            nn.ConvTranspose2d(
+                embed_dim, embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
+            ),
+            norm_layer(embed_dim),
+        )
+
+        self.head = PointwiseConvolution(embed_dim, num_classes, channel_last=False)
+
         # num_features = embed_dim * 2 ** (len(depths) - int(not self.final_downsample))
         # self.norm = norm_layer(num_features)
         # self.permute = Permute([0, 3, 1, 2])  # B H W C -> B C H W
@@ -282,9 +292,8 @@ class SwinTransformer(nn.Module):
 
             x = self.decoder[i+(1 + int(self.cross_attention_skip))](x)
 
-        # x = self.norm(x)
-        # x = self.permute(x)
-        # x = self.avgpool(x)
-        # x = self.flatten(x)
-        # x = self.head(x)
+        x = self.unpatching(x)
+
+        x = self.head(x)
+
         return x
