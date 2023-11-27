@@ -69,12 +69,15 @@ class PatchExpandingV2(nn.Module):
         return x
 
 class PointwiseConvolution(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, channel_last=True):
         super(PointwiseConvolution, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0)
+        if channel_last:
+            self.pointwise = nn.Linear(in_channels, out_channels)
+        else:
+            self.pointwise = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x):
-        return self.conv(x)
+        return self.pointwise(x)
 
 
 class SwinTransformer(nn.Module):
@@ -224,9 +227,10 @@ class SwinTransformer(nn.Module):
                         norm_layer=norm_layer,
                     )
                 )
-                stage.append(
-                    nn.Identity()
-                )
+                if i_layer == 0:
+                    stage.append(
+                        PointwiseConvolution(2*dim, dim)
+                    )
                 stage_block_id += 1
             self.decoder.append(nn.Sequential(*stage))
 
