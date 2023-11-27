@@ -241,7 +241,7 @@ class SwinTransformer(nn.Module):
             nn.ConvTranspose2d(
                 embed_dim, embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
             ),
-            norm_layer(embed_dim),
+            nn.BatchNorm2d(embed_dim, eps=1e-5), # NOTE : Swapped out from LayerNorm because we are Conv-ing
         )
 
         self.head = PointwiseConvolution(embed_dim, num_classes, channel_last=False)
@@ -255,6 +255,8 @@ class SwinTransformer(nn.Module):
     def forward(self, x):
 
         x = self.patching(x)
+
+        print(x.shape)
         
         residuals = []
         for i in range(0, len(self.encoder), 2):
@@ -285,7 +287,11 @@ class SwinTransformer(nn.Module):
 
             x = self.decoder[i+(1 + int(self.cross_attention_skip))](x)
 
+        print(x.shape)
+
         x = self.unpatching(x)
+
+        print(x.shape)
 
         x = self.head(x)
 
