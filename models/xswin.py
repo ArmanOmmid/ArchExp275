@@ -10,7 +10,7 @@ from torchvision.ops.misc import MLP, Permute
 from torchvision.models.swin_transformer import SwinTransformerBlockV2, PatchMergingV2
 from torchvision.models.vision_transformer import EncoderBlock as ViTEncoderBlock
 
-from _network import _Network
+from ._network import _Network
 
 def _pad_expansion(x: torch.Tensor, distributed: bool = False) -> torch.Tensor:
     *B, H, W, C = x.shape
