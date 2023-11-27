@@ -183,7 +183,7 @@ class XNetSwinTransformer(_Network):
         # downsample_layer: Callable[..., nn.Module] = PatchMergingV2,
         middle_stages: int = 1,
         final_downsample: bool = False,
-        cross_attention_residual: bool = True,
+        residual_cross_attention: bool = True,
         weights=None,
     ):
         super().__init__()
@@ -201,7 +201,7 @@ class XNetSwinTransformer(_Network):
             norm_layer(embed_dim),
         )
 
-        self.cross_attention_residual = cross_attention_residual
+        self.residual_cross_attention = residual_cross_attention
         self.final_downsample = final_downsample
         total_stage_blocks = sum(depths)
 
@@ -277,7 +277,7 @@ class XNetSwinTransformer(_Network):
             if i_stage < (len(depths) - 1) or self.final_downsample:
                 self.decoder.append(PatchExpandingV2(2*dim, norm_layer)) # NOTE : Double input dim
 
-            if self.cross_attention_residual:
+            if self.residual_cross_attention:
               self.decoder.append(
                 SwinResidualCrossAttention(window_size=window_size, embed_dim=dim, num_heads=num_heads[i_stage], attention_dropout=attention_dropout)
               )
@@ -350,19 +350,19 @@ class XNetSwinTransformer(_Network):
 
         for i_residual, i in zip(
             range(len(residuals)-1, -1, -1), # Count backwards for residual indices 
-            range(0 - int(not self.final_downsample), len(self.decoder), 2 + int(self.cross_attention_residual))
+            range(0 - int(not self.final_downsample), len(self.decoder), 2 + int(self.residual_cross_attention))
         ):
             if i > 0 or self.final_downsample:
                 x = self.decoder[i](x) # Upsample (PatchExpand)
 
             residual = residuals[i_residual]
 
-            if self.cross_attention_residual:
+            if self.residual_cross_attention:
                 residual = self.decoder[i+1](x, residual) # Cross Attention Skip Connection
 
             x = torch.cat((x, residual), dim=-1) # Dumb Skip Connection
 
-            x = self.decoder[i+(1 + int(self.cross_attention_residual))](x)
+            x = self.decoder[i+(1 + int(self.residual_cross_attention))](x)
 
         x = self.unpatching(x)
 
