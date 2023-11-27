@@ -100,8 +100,18 @@ def _extract_windows(feature_map, window_height, window_width, stride_height=Non
         stride_width = window_width
     
     *B, H, W, C = feature_map.shape
+
+    # TODO : Unfold Padding is HACKY 
+    pad_height = (H % window_height) // 2
+    pad_width = (W % window_width) // 2
+    if pad_height > 0 or pad_width > 0:
+        feature_map = feature_map.permute(0, -1, -3, -2)
+        feature_map = F.pad(feature_map, (pad_width, pad_width, pad_height, pad_height), 'constant', 0)
+        feature_map = feature_map.permute(0, -2, -1, -3)
+
     # Unfold the feature map into windows for both dimensions
     unfolded_height = feature_map.unfold(-3, window_height, stride_height) # New dim (from H) created at the end
+
     unfolded_both = unfolded_height.unfold(-3, window_width, stride_width) # So we do -3 again for W
 
     # Send C to the back
@@ -112,7 +122,7 @@ def _extract_windows(feature_map, window_height, window_width, stride_height=Non
     # We need [*B, H_unfolded, W_unfolded, <WindowContext>, C]
     windows = windows.reshape(*B, H_unfolded, W_unfolded, window_height * window_width, C)
 
-    return windows
+    return windows, pad_height, pad_width
 
 
 class SwinResidualCrossAttention(nn.Module):
@@ -125,12 +135,13 @@ class SwinResidualCrossAttention(nn.Module):
 
     def forward(self, x, residual):
 
-        x_context = _extract_windows(x, self.window_height, self.window_width)
-        residual_context = _extract_windows(residual, self.window_height, self.window_width)
+        x_context, _, _ = _extract_windows(x, self.window_height, self.window_width)
+        residual_context, pad_height, pad_width = _extract_windows(residual, self.window_height, self.window_width)
 
         assert x_context.shape == residual_context.shape, f"{x_context.shape} != {residual_context.shape}"
 
         *B, H, W, WINDOW, C = residual_context.shape
+
 
         Q = x_context.reshape(-1, WINDOW, C)
         K = V = residual_context.reshape(-1, WINDOW, C)
@@ -138,8 +149,16 @@ class SwinResidualCrossAttention(nn.Module):
         attended_residuals, attention_weights = self.cross_attention(Q, K, V)
 
         attended_residuals = attended_residuals.reshape(*B, H, W, self.window_height, self.window_width, C)
+
         attended_residuals = attended_residuals.permute(0, -5, -3, -4, -2, -1)
+
         attended_residuals = attended_residuals.reshape(*B, H * self.window_height, W * self.window_width, C)
+
+        # TODO : Unfold Padding is HACKY 
+        if pad_height > 0:
+            attended_residuals = attended_residuals[:, pad_height:-pad_height, :, :]
+        if pad_width > 0:
+            attended_residuals = attended_residuals[:, pad_width:-pad_width, :, :]
 
         return attended_residuals
 
@@ -359,8 +378,6 @@ class XNetSwinTransformer(_Network):
 
             if self.residual_cross_attention:
                 residual = self.decoder[i+1](x, residual) # Cross Attention Skip Connection
-
-                print(x.shape, residual.shape)
 
             x = torch.cat((x, residual), dim=-1) # Dumb Skip Connection
 
