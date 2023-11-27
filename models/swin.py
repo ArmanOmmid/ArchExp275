@@ -61,9 +61,7 @@ class PatchExpandingV2(nn.Module):
             Tensor with layout of [..., H/2, W/2, 2*C]
         """
         # Linear expansion first to share more information
-        print(x.shape)
         x = self.expansion(x)
-        print(x.shape)
         x = self.norm(x)
         x = _patch_expanding_pad(x)
         return x
@@ -236,9 +234,7 @@ class SwinTransformer(nn.Module):
                 stage_block_id += 1
             self.decoder.append(nn.Sequential(*stage))
 
-
-        # self.decoder : List[nn.Module] = []
-        # stage_block_id = 0
+        self.decoder = nn.ModuleList(self.decoder)
 
         # num_features = embed_dim * 2 ** (len(depths) - int(not self.final_downsample))
         # self.norm = norm_layer(num_features)
