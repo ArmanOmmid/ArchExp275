@@ -110,7 +110,7 @@ def _extract_windows(feature_map, window_height, window_width, stride_height=Non
     # The shape after unfold will be [B*, H_unfolded, W_unfolded, window_height, window_width, C]
     *B, H_unfolded, W_unfolded, H_window, W_window, C = windows.shape
     # We need [*B, H_unfolded, W_unfolded, <WindowContext>, C]
-    windows = windows.contiguous().view(*B, H_unfolded, W_unfolded, window_height * window_width, C) 
+    windows = windows.reshape(*B, H_unfolded, W_unfolded, window_height * window_width, C)
 
     return windows
 
@@ -128,16 +128,18 @@ class SwinResidualCrossAttention(nn.Module):
         x_context = _extract_windows(x, self.window_height, self.window_width)
         residual_context = _extract_windows(residual, self.window_height, self.window_width)
 
-        assert x_context.shape == residual.shape
+        assert x_context.shape == residual_context.shape, f"{x_context.shape} != {residual_context.shape}"
 
-        *B, H, W, WINDOW, C = x_context.shape
+        *B, H, W, WINDOW, C = residual_context.shape
 
-        Q = x_context.contiguous().view(-1, WINDOW, C)
-        K = V = residual_context.contiguous().view(-1, WINDOW, C)
+        Q = x_context.reshape(-1, WINDOW, C)
+        K = V = residual_context.reshape(-1, WINDOW, C)
 
         attended_residuals, attention_weights = self.cross_attention(Q, K, V)
 
-        attended_residuals = attended_residuals.contiguous().view(*B, H, W, WINDOW, C)
+        attended_residuals = attended_residuals.reshape(*B, H, W, self.window_height, self.window_width, C)
+        attended_residuals = attended_residuals.permute(0, -5, -3, -4, -2, -1)
+        attended_residuals = attended_residuals.reshape(*B, H * self.window_height, W * self.window_width, C)
 
         return attended_residuals
 
