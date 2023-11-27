@@ -77,7 +77,7 @@ class PointwiseConvolution(nn.Module):
     def forward(self, x):
         return self.pointwise(x)
 
-class SwinTransformer(nn.Module):
+class XNetSwinTransformer(nn.Module):
     """
     Implements Swin Transformer from the `"Swin Transformer: Hierarchical Vision Transformer using
     Shifted Windows" <https://arxiv.org/abs/2103.14030>`_ paper.
