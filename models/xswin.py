@@ -79,6 +79,31 @@ class PointwiseConvolution(nn.Module):
     def forward(self, x):
         return self.pointwise(x)
 
+def extract_windows(feature_map, window_size, stride):
+    """
+    Extract local windows from a feature map.
+    
+    Parameters:
+    - feature_map: the input feature map, shape [B, C, H, W]
+    - window_size: the size of the window (assuming a square window)
+    - stride: the stride of the windows across the feature map
+    
+    Returns:
+    - windows: the local windows, shape [B, num_windows, C, window_size, window_size]
+    """
+    # Unfold the feature map into windows
+    unfolded = feature_map.unfold(2, window_size, stride).unfold(3, window_size, stride)
+    
+    # Reshape to get the windows into separate dimensions
+    # After unfold, shape is [B, C, H_unfolded, W_unfolded, window_size, window_size]
+    B, C, H_unfolded, W_unfolded, _, _ = unfolded.shape
+    windows = unfolded.contiguous().view(B, C, -1, window_size, window_size).permute(0, 2, 1, 3, 4)
+    
+    return windows
+
+class SwinResidualCrossAttention():
+    pass
+
 class XNetSwinTransformer(_Network):
     """
     Implements Swin Transformer from the `"Swin Transformer: Hierarchical Vision Transformer using
@@ -97,7 +122,8 @@ class XNetSwinTransformer(_Network):
         block (nn.Module, optional): SwinTransformer Block. Default: None.
         norm_layer (nn.Module, optional): Normalization layer. Default: None.
         downsample_layer (nn.Module): Downsample layer (patch merging). Default: PatchMerging.
-        final_downsample (bool): Do a final downsampling for the encoder towards the mid-network
+        final_downsample (bool): Do a final downsampling for the encoder towards the mid-network.
+        cross_attention_residual: Use cross attention for Swin residual connections
     """
 
     def __init__(
@@ -117,7 +143,7 @@ class XNetSwinTransformer(_Network):
         # downsample_layer: Callable[..., nn.Module] = PatchMergingV2,
         middle_stages: int = 1,
         final_downsample: bool = False,
-        cross_attention_skip: bool = False,
+        cross_attention_residual: bool = False,
         weights=None,
     ):
         super().__init__()
@@ -135,7 +161,7 @@ class XNetSwinTransformer(_Network):
             norm_layer(embed_dim),
         )
 
-        self.cross_attention_skip = cross_attention_skip
+        self.cross_attention_residual = cross_attention_residual
         self.final_downsample = final_downsample
         total_stage_blocks = sum(depths)
 
@@ -211,7 +237,7 @@ class XNetSwinTransformer(_Network):
             if i_stage < (len(depths) - 1) or self.final_downsample:
                 self.decoder.append(PatchExpandingV2(2*dim, norm_layer)) # NOTE : Double input dim
 
-            # if self.cross_attention_skip:
+            # if self.cross_attention_residual:
             #   stage.append() X-Attn Skip Connection
 
             for i_layer in range(depths[i_stage]):
@@ -282,19 +308,19 @@ class XNetSwinTransformer(_Network):
 
         for i_residual, i in zip(
             range(len(residuals)-1, -1, -1), # Count backwards for residual indices 
-            range(0 - int(not self.final_downsample), len(self.decoder), 2 + int(self.cross_attention_skip))
+            range(0 - int(not self.final_downsample), len(self.decoder), 2 + int(self.cross_attention_residual))
         ):
             if i > 0 or self.final_downsample:
                 x = self.decoder[i](x) # Upsample (PatchExpand)
 
             residual = residuals[i_residual]
 
-            if self.cross_attention_skip:
+            if self.cross_attention_residual:
                 residual = self.decoder[i+1](residual) # Cross Attention Skip Connection
 
             x = torch.cat((x, residual), dim=-1) # Dumb Skip Connection
 
-            x = self.decoder[i+(1 + int(self.cross_attention_skip))](x)
+            x = self.decoder[i+(1 + int(self.cross_attention_residual))](x)
 
         x = self.unpatching(x)
 
