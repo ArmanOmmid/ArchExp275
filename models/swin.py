@@ -30,6 +30,8 @@ def _patch_expanding_pad(x: torch.Tensor) -> torch.Tensor:
 
     C = C_QUAD // 4
 
+    x = _pad_expansion(x)
+
     x = x.view(*B, H_HALF, W_HALF, 2, 2, C)
 
     x = x.permute(0, 1, 3, 2, 4, 5).contiguous()
@@ -65,6 +67,15 @@ class PatchExpandingV2(nn.Module):
         x = self.norm(x)
         x = _patch_expanding_pad(x)
         return x
+
+class PointwiseConvolution(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(PointwiseConvolution, self).__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0)
+
+    def forward(self, x):
+        return self.conv(x)
+
 
 class SwinTransformer(nn.Module):
     """
@@ -185,7 +196,7 @@ class SwinTransformer(nn.Module):
 
         # stage_block_id = 0 # NOTE : Not reseting dropout scheduler
         # Decoder Swin Blocks
-        for i_stage in range(len(depths)-1, 0, -1): # Count Backwards!
+        for i_stage in range(len(depths)-1, 0, -1): # NOTE : Count Backwards!
             stage: List[nn.Module] = []
             dim = embed_dim * 2**i_stage
 
@@ -198,7 +209,7 @@ class SwinTransformer(nn.Module):
 
                 # add patch merging layer
                 if i_stage < (len(depths) - 1) or self.final_downsample:
-                    self.decoder.append(PatchExpandingV2(dim, norm_layer))
+                    self.decoder.append(PatchExpandingV2(2*dim, norm_layer)) # NOTE : Double input dim
 
                 stage.append(
                     SwinTransformerBlockV2(
@@ -212,6 +223,9 @@ class SwinTransformer(nn.Module):
                         stochastic_depth_prob=sd_prob,
                         norm_layer=norm_layer,
                     )
+                )
+                stage.append(
+                    nn.Identity()
                 )
                 stage_block_id += 1
             self.decoder.append(nn.Sequential(*stage))
