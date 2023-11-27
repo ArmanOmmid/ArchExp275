@@ -79,7 +79,7 @@ class PointwiseConvolution(nn.Module):
     def forward(self, x):
         return self.pointwise(x)
 
-def extract_windows(feature_map, window_height, window_width, stride_height=None, stride_width=None):
+def _extract_windows(feature_map, window_height, window_width, stride_height=None, stride_width=None):
     """
     Extract local windows from a feature map for non-square windows and flatten them.
 
@@ -114,21 +114,33 @@ def extract_windows(feature_map, window_height, window_width, stride_height=None
 
     return windows
 
-# # Example usage
-# B = 1  # Batch size or any number of additional dimensions
-# H, W, C = 128, 128, 64  # Height, Width, Channels
-# feature_map = torch.randn(B, H, W, C)
-# window_height, window_width = 8, 4
-# stride_height, stride_width = 4, 2
 
-# local_windows = extract_windows(feature_map, window_height, window_width, stride_height, stride_width)
-# print(local_windows.shape)  # Expected shape: [B, num_windows, S, C] where S = window_height * window_width
+class SwinResidualCrossAttention(nn.Module):
+    def __init__(self, window_size, embed_dim, num_heads, attention_dropout, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
-# # Now local_windows can be fed to an attention mechanism
+        assert len(window_size.shape) == 2
+        self.window_height, self.window_width = window_size
+        self.cross_attention = nn.MultiheadAttention(embed_dim, num_heads, dropout=attention_dropout, batch_first=True)
 
+    def forward(self, x, residual):
 
-class SwinResidualCrossAttention():
-    pass
+        x_context = _extract_windows(x, self.window_height, self.window_width)
+        residual_context = _extract_windows(residual, self.window_height, self.window_width)
+
+        assert x_context.shape == residual.shape
+
+        *B, H, W, WINDOW, C = x_context.shape
+
+        Q = x_context.contiguous().view(-1, WINDOW, C)
+        K = V = residual_context.contiguous().view(-1, WINDOW, C)
+
+        attended_residuals, attention_weights = self.cross_attention(Q, K, V)
+
+        attended_residuals = attended_residuals.contiguous().view(*B, H, W, WINDOW, C)
+
+        return attended_residuals
+
 
 class XNetSwinTransformer(_Network):
     """
@@ -263,8 +275,10 @@ class XNetSwinTransformer(_Network):
             if i_stage < (len(depths) - 1) or self.final_downsample:
                 self.decoder.append(PatchExpandingV2(2*dim, norm_layer)) # NOTE : Double input dim
 
-            # if self.cross_attention_residual:
-            #   stage.append() X-Attn Skip Connection
+            if self.cross_attention_residual:
+              stage.append(
+                SwinResidualCrossAttention(window_size=window_size, embed_dim=dim, num_heads=num_heads[i_stage], attention_dropout=attention_dropout)
+              )
 
             for i_layer in range(depths[i_stage]):
                 # "Dropout Scheduler" : adjust stochastic depth probability based on the depth of the stage block
@@ -342,7 +356,7 @@ class XNetSwinTransformer(_Network):
             residual = residuals[i_residual]
 
             if self.cross_attention_residual:
-                residual = self.decoder[i+1](residual) # Cross Attention Skip Connection
+                residual = self.decoder[i+1](x, residual) # Cross Attention Skip Connection
 
             x = torch.cat((x, residual), dim=-1) # Dumb Skip Connection
 
