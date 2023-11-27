@@ -246,13 +246,6 @@ class SwinTransformer(nn.Module):
 
         self.head = PointwiseConvolution(embed_dim, num_classes, channel_last=False)
 
-        # num_features = embed_dim * 2 ** (len(depths) - int(not self.final_downsample))
-        # self.norm = norm_layer(num_features)
-        # self.permute = Permute([0, 3, 1, 2])  # B H W C -> B C H W
-        # self.avgpool = nn.AdaptiveAvgPool2d(1)
-        # self.flatten = nn.Flatten(1)
-        # self.head = nn.Linear(num_features, num_classes)
-
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 nn.init.trunc_normal_(m.weight, std=0.02)
