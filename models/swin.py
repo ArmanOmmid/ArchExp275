@@ -77,7 +77,6 @@ class PointwiseConvolution(nn.Module):
     def forward(self, x):
         return self.pointwise(x)
 
-
 class SwinTransformer(nn.Module):
     """
     Implements Swin Transformer from the `"Swin Transformer: Hierarchical Vision Transformer using
@@ -216,8 +215,8 @@ class SwinTransformer(nn.Module):
 
                 stage.append(
                     SwinTransformerBlockV2(
-                        dim * (1 + (i_layer == 0)), # First Swin Block in Decoder Stage gets Stacked
-                        num_heads[i_stage] * (1 + (i_layer == 0)), # Double heads in this case too
+                        dim * (1 + int(i_layer == 0)), # First Swin Block in Decoder Stage gets Stacked
+                        num_heads[i_stage] * (1 + int(i_layer == 0)), # Double heads in this case too
                         window_size=window_size,
                         shift_size=[0 if i_layer % 2 == 0 else w // 2 for w in window_size],
                         mlp_ratio=mlp_ratio,
@@ -229,7 +228,7 @@ class SwinTransformer(nn.Module):
                 )
                 if i_layer == 0:
                     stage.append(
-                        PointwiseConvolution(2*dim, dim)
+                        PointwiseConvolution(2*dim, dim) # Reduce the dimensionality after first Swin in Stage
                     )
                 stage_block_id += 1
             self.decoder.append(nn.Sequential(*stage))
@@ -255,8 +254,6 @@ class SwinTransformer(nn.Module):
     def forward(self, x):
 
         x = self.patching(x)
-
-        print(x.shape)
         
         residuals = []
         for i in range(0, len(self.encoder), 2):
@@ -271,22 +268,15 @@ class SwinTransformer(nn.Module):
         x = self.middle(x)
         x = x.contiguous().view(*B, H, W, C)
 
-        print(self.decoder)
-
         for i_residual, i in zip(
             range(len(residuals)-1, -1, -1), # Count backwards for residual indices 
             range(0 - int(not self.final_downsample), len(self.decoder), 2 + int(self.cross_attention_skip))
         ):
-            print(i)
-            print(".////")
-            print(x.shape)
-            print(self.decoder[i])
             if i > 0 or self.final_downsample:
                 x = self.decoder[i](x) # Upsample (PatchExpand)
 
             residual = residuals[i_residual]
-            print(x.shape)
-            print(residual.shape)
+
             if self.cross_attention_skip:
                 residual = self.decoder[i+1](residual) # Cross Attention Skip Connection
 
@@ -294,11 +284,7 @@ class SwinTransformer(nn.Module):
 
             x = self.decoder[i+(1 + int(self.cross_attention_skip))](x)
 
-        print(x.shape)
-
         x = self.unpatching(x)
-
-        print(x.shape)
 
         x = self.head(x)
 
