@@ -60,6 +60,7 @@ class PatchExpandingV2(nn.Module):
         x = _patch_expanding_pad(x)
         return x
     
+    @staticmethod
     def _post_expand_trim(x, trimmed_shape):
         # Because of patch expanding, there can be an unexpected additional dimension (just 1)
         H_trim = x.size(-3) - trimmed_shape[-3] > 0
