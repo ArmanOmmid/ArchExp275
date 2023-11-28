@@ -29,7 +29,7 @@ class XNetSwinTransformer(_Network):
         num_classes (int): Number of classes for classification head. Default: 1000.
         block (nn.Module, optional): SwinTransformer Block. Default: None.
         norm_layer (nn.Module, optional): Normalization layer. Default: None.
-        downsample_layer (nn.Module): Downsample layer (patch merging). Default: PatchMerging.
+        downsample_layer (nn.Module): Downsample layer (patch merging). Default: False.
         final_downsample (bool): Do a final downsampling for the encoder towards the mid-network.
         cross_attention_residual: Use cross attention for Swin residual connections
     """
