@@ -13,21 +13,6 @@ from torchvision.models.vision_transformer import EncoderBlock as ViTEncoderBloc
 from ._network import _Network
 from .modules import PatchExpandingV2, SwinResidualCrossAttention, ConvolutionTripletLayer, PointwiseConvolution 
 
-def _post_expand_trim(x, residual_shape):
-    # Because of patch expanding, there can be an unexpected additional dimension (just 1)
-    H_trim = x.size(-3) - residual_shape[-3] > 0
-    W_trim = x.size(-2) - residual_shape[-2] > 0
-
-    if H_trim and W_trim:
-        x = x[:, :-1, :-1, :]
-    elif H_trim:
-        x = x[:, :-1, :, :]
-    elif W_trim:
-        x = x[:, :, :-1, :]
-
-    return x
-
-
 class XNetSwinTransformer(_Network):
     """
     Args:
@@ -235,13 +220,15 @@ class XNetSwinTransformer(_Network):
             range(len(residuals)-1, -1, -1), # Count backwards for residual indices 
             range(0 - int(not self.final_downsample), len(self.decoder), 2 + int(self.residual_cross_attention))
         ):
+            
             if i > 0 or self.final_downsample:
                 x = self.decoder[i](x) # Upsample (PatchExpand)
-
-            x = _post_expand_trim(x, residuals[i_residual].shape)
+                x = self.decoder[i]._post_expand_trim(x, residuals[i_residual].shape)
 
             if self.residual_cross_attention:
                 residual = self.decoder[i+1](x, residuals[i_residual]) # Cross Attention Skip Connection
+            else:
+                residual = residuals[i_residual]
 
             x = torch.cat((x, residual), dim=-1) # Dumb Skip Connection
 

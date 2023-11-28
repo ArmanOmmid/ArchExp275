@@ -59,3 +59,17 @@ class PatchExpandingV2(nn.Module):
         x = self.norm(x)
         x = _patch_expanding_pad(x)
         return x
+    
+    def _post_expand_trim(x, trimmed_shape):
+        # Because of patch expanding, there can be an unexpected additional dimension (just 1)
+        H_trim = x.size(-3) - trimmed_shape[-3] > 0
+        W_trim = x.size(-2) - trimmed_shape[-2] > 0
+
+        if H_trim and W_trim:
+            x = x[:, :-1, :-1, :]
+        elif H_trim:
+            x = x[:, :-1, :, :]
+        elif W_trim:
+            x = x[:, :, :-1, :]
+
+        return x
