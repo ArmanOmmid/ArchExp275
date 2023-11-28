@@ -6,15 +6,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torchvision.ops.misc import MLP, Permute
-from torchvision.models.swin_transformer import SwinTransformerBlockV2, PatchMergingV2
-from torchvision.models.vision_transformer import EncoderBlock as ViTEncoderBlock
-
 from ._network import _Network
-from .modules import PatchExpandingV2, SwinResidualCrossAttention, ConvolutionTriplet, PointwiseConvolution, \
-    Patching, UnPatching, create_positional_embedding
+from .modules import SwinTransformerBlockV2_Modulated, ViTEncoderBlock_Modulated, \
+                        PatchMergingV2_Modulated, PatchExpandingV2_Modulated, Patching_Modulated, UnPatching_Modulated, \
+                        SwinResidualCrossAttention_Modulated, ConvolutionTriplet_Modulated, PointwiseConvolution_Modulated, \
+                        create_positional_embedding, initialize_weights, TimestepEmbedder, LabelEmbedder
 
-class XNetSwinTransformer(_Network):
+class XNetSwinTransformer_Diffusion(_Network):
     """
     Args:
         patch_size (List[int]): Patch size.
@@ -52,6 +50,7 @@ class XNetSwinTransformer(_Network):
         final_downsample: bool = True,
         residual_cross_attention: bool = True,
         input_size: List[int] = None, # Needed to deduce the positional encodings in the global ViT layers
+        class_dropout_prob=0.1,
         weights=None,
     ):
         super().__init__()
@@ -60,11 +59,15 @@ class XNetSwinTransformer(_Network):
         if input_size is None:
             print("WARNING: Not Providing The Argument 'input_size' Means Latent ViT Blocks will NOT Have Positional Embedings")
 
+
+        self.t_embedder = TimestepEmbedder(embed_dim)
+        self.y_embedder = LabelEmbedder(num_classes, embed_dim, class_dropout_prob)
+
         # Smooth Patch Partitioning
 
-        self.smooth_conv_in = ConvolutionTriplet(3, embed_dim, kernel_size=3)
+        self.smooth_conv_in = ConvolutionTriplet_Modulated(3, embed_dim, kernel_size=3)
 
-        self.patching = Patching(embed_dim=embed_dim, patch_size=patch_size, norm_layer=norm_layer)
+        self.patching = Patching_Modulated(embed_dim=embed_dim, patch_size=patch_size, norm_layer=norm_layer)
 
         self.residual_cross_attention = residual_cross_attention
         self.final_downsample = final_downsample
@@ -86,7 +89,7 @@ class XNetSwinTransformer(_Network):
                 # "Dropout Scheduler" : adjust stochastic depth probability based on the depth of the stage block
                 sd_prob = stochastic_depth_prob * float(stage_block_id) / (2*total_stage_blocks - 1) # NOTE : Double
                 stage.append(
-                    SwinTransformerBlockV2(
+                    SwinTransformerBlockV2_Modulated(
                         dim,
                         num_heads[i_stage],
                         window_size=window_size,
@@ -102,7 +105,7 @@ class XNetSwinTransformer(_Network):
             self.encoder.append(nn.Sequential(*stage))
             # Patch Merging Layer
             if i_stage < (len(depths) - 1) or self.final_downsample:
-                self.encoder.append(PatchMergingV2(dim, norm_layer))
+                self.encoder.append(PatchMergingV2_Modulated(dim, norm_layer))
 
         self.encoder = nn.ModuleList(self.encoder)
 
@@ -126,7 +129,7 @@ class XNetSwinTransformer(_Network):
         self.middle : List[nn.Module] = []
         for _ in range(min(1, middle_stages)):
             self.middle.append(
-                ViTEncoderBlock(
+                ViTEncoderBlock_Modulated(
                     num_heads = num_heads[-1], # Use number of heads as final Swin Encoder Block
                     hidden_dim = current_features,
                     mlp_dim = int(current_features * mlp_ratio),
@@ -151,11 +154,11 @@ class XNetSwinTransformer(_Network):
 
             # add patch merging layer
             if i_stage < (len(depths) - 1) or self.final_downsample:
-                self.decoder.append(PatchExpandingV2(2*dim, norm_layer)) # NOTE : Double input dim
+                self.decoder.append(PatchExpandingV2_Modulated(2*dim, norm_layer)) # NOTE : Double input dim
 
             if self.residual_cross_attention:
               self.decoder.append(
-                SwinResidualCrossAttention(window_size=window_size, embed_dim=dim, 
+                SwinResidualCrossAttention_Modulated(window_size=window_size, embed_dim=dim, 
                                            num_heads=num_heads[i_stage], attention_dropout=attention_dropout,
                                            norm_layer=norm_layer))
 
@@ -164,7 +167,7 @@ class XNetSwinTransformer(_Network):
                 sd_prob = stochastic_depth_prob * float(stage_block_id) / (2*total_stage_blocks - 1) # NOTE : Double
 
                 stage.append(
-                    SwinTransformerBlockV2(
+                    SwinTransformerBlockV2_Modulated(
                         dim * (1 + int(i_layer == 0)), # First Swin Block in Decoder Stage gets Stacked from Residuals
                         num_heads[i_stage] * (1 + int(i_layer == 0)), # Double heads in this case too
                         window_size=window_size,
@@ -178,29 +181,25 @@ class XNetSwinTransformer(_Network):
                 )
                 if i_layer == 0:
                     stage.append(
-                        PointwiseConvolution(2*dim, dim) # Reduce the dimensionality after first Swin in Stage
+                        PointwiseConvolution_Modulated(2*dim, dim) # Reduce the dimensionality after first Swin in Stage
                     )
                 stage_block_id += 1
             self.decoder.append(nn.Sequential(*stage))
 
         self.decoder = nn.ModuleList(self.decoder)
 
-        self.unpatching = UnPatching(embed_dim=embed_dim, patch_size=patch_size) # Norm Layer uses default BatchNorm
+        self.unpatching = UnPatching_Modulated(embed_dim=embed_dim, patch_size=patch_size) # Norm Layer uses default BatchNorm
 
         # This will concatonate as a residual connection
-        self.smooth_conv_out = ConvolutionTriplet(2*embed_dim, embed_dim, kernel_size=3)
+        self.smooth_conv_out = ConvolutionTriplet_Modulated(2*embed_dim, embed_dim, kernel_size=3)
 
-        self.head = PointwiseConvolution(embed_dim, num_classes, channel_last=False)
+        self.head = PointwiseConvolution_Modulated(embed_dim, num_classes, channel_last=False)
 
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.trunc_normal_(m.weight, std=0.02)
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
+        initialize_weights(self)
 
         self.load(weights)
 
-    def forward(self, x):
+    def forward(self, x, t, y):
 
         spatial_shape = (x.size(-2), x.size(-1))
 

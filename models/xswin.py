@@ -6,15 +6,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torchvision.ops.misc import MLP, Permute
-from torchvision.models.swin_transformer import SwinTransformerBlockV2, PatchMergingV2
-from torchvision.models.vision_transformer import EncoderBlock as ViTEncoderBlock
-
 from ._network import _Network
 from .modules import SwinTransformerBlockV2, ViTEncoderBlock, \
                         PatchMergingV2, PatchExpandingV2, Patching, UnPatching, \
                         SwinResidualCrossAttention, ConvolutionTriplet, PointwiseConvolution, \
-                        create_positional_embedding
+                        create_positional_embedding, initialize_weights
 
 class XNetSwinTransformer(_Network):
     """
@@ -192,11 +188,7 @@ class XNetSwinTransformer(_Network):
 
         self.head = PointwiseConvolution(embed_dim, num_classes, channel_last=False)
 
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.trunc_normal_(m.weight, std=0.02)
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
+        initialize_weights(self)
 
         self.load(weights)
 

@@ -1,6 +1,7 @@
 
 from .positional import create_positional_embedding
 from .embeddings import TimestepEmbedder, LabelEmbedder, Modulator
+from .initialize import initialize_weights
 
 from .normal.convolution_triplet import ConvolutionTriplet
 from .normal.residual_cross_attention import SwinResidualCrossAttention
