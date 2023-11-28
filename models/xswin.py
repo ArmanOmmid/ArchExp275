@@ -11,8 +11,10 @@ from torchvision.models.swin_transformer import SwinTransformerBlockV2, PatchMer
 from torchvision.models.vision_transformer import EncoderBlock as ViTEncoderBlock
 
 from ._network import _Network
-from .modules import PatchExpandingV2, SwinResidualCrossAttention, ConvolutionTriplet, PointwiseConvolution, \
-    Patching, UnPatching, create_positional_embedding
+from .modules import SwinTransformerBlockV2, ViTEncoderBlock, \
+                        PatchMergingV2, PatchExpandingV2, Patching, UnPatching, \
+                        SwinResidualCrossAttention, ConvolutionTriplet, PointwiseConvolution, \
+                        create_positional_embedding
 
 class XNetSwinTransformer(_Network):
     """
@@ -29,8 +31,10 @@ class XNetSwinTransformer(_Network):
         num_classes (int): Number of classes for classification head. Default: 1000.
         block (nn.Module, optional): SwinTransformer Block. Default: None.
         norm_layer (nn.Module, optional): Normalization layer. Default: None.
-        downsample_layer (nn.Module): Downsample layer (patch merging). Default: False.
-        final_downsample (bool): Do a final downsampling for the encoder towards the mid-network.
+
+        global_stages (int): Global Attention ViT Layers between Encoder and Decoder
+        input_size (List[int]): Gives input size of the data. If not provided, Global ViT Layers will NOT have positional embeddings
+        final_downsample (bool): Do a final downsampling for the encoder towards the mid-network. If there are no Global ViT Layers, this is ignored.
         cross_attention_residual (bool): Use cross attention for Swin residual connections
         weights (str): Path to load weights
     """
@@ -48,10 +52,10 @@ class XNetSwinTransformer(_Network):
         stochastic_depth_prob: float = 0.1,
         num_classes: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = partial(nn.LayerNorm, eps=1e-5),
-        middle_stages: int = 1,
+        global_stages: int = 1, 
+        input_size: List[int] = None, # Needed to deduce the positional encodings in the global ViT layers
         final_downsample: bool = True,
         residual_cross_attention: bool = True,
-        input_size: List[int] = None, # Needed to deduce the positional encodings in the global ViT layers
         weights=None,
     ):
         super().__init__()
@@ -67,7 +71,7 @@ class XNetSwinTransformer(_Network):
         self.patching = Patching(embed_dim=embed_dim, patch_size=patch_size, norm_layer=norm_layer)
 
         self.residual_cross_attention = residual_cross_attention
-        self.final_downsample = final_downsample
+        self.final_downsample = final_downsample and global_stages > 0
         total_stage_blocks = sum(depths)
 
         ################################################
@@ -115,16 +119,16 @@ class XNetSwinTransformer(_Network):
         if input_size is None:
             self.pos_embed = 0
         else:
-            downsample_count = len(depths) - int(not final_downsample) # downsample is one less in this case
+            downsample_count = len(depths) - int(not self.final_downsample) # downsample is one less in this case
             latent_H = input_size[0] // window_size[0]
             latent_W = input_size[1] // window_size[1]
             for i in range(downsample_count):
-                latent_H = latent_H // 2
-                latent_W = latent_W // 2
-            self.pos_embed = create_positional_embedding(current_features, latent_H*latent_H)
+                latent_H = (latent_H // 2) + (latent_H % 2) # Dims are padded up
+                latent_W = (latent_W // 2)+ (latent_W % 2) # Dims are padded up
+            self.pos_embed = create_positional_embedding(current_features, latent_H, latent_W)
 
         self.middle : List[nn.Module] = []
-        for _ in range(min(1, middle_stages)):
+        for _ in range((global_stages)):
             self.middle.append(
                 ViTEncoderBlock(
                     num_heads = num_heads[-1], # Use number of heads as final Swin Encoder Block
@@ -135,7 +139,7 @@ class XNetSwinTransformer(_Network):
                     norm_layer = norm_layer,
                 )
             )
-        self.middle = nn.Sequential(*self.middle)
+        self.middle = nn.Sequential(*self.middle) if len(self.middle) > 0 else nn.Identity()
 
         ################################################
         # DECODER
@@ -219,7 +223,9 @@ class XNetSwinTransformer(_Network):
 
         *B, H, W, C = x.shape
         x = x.contiguous().view(*B, H*W, C)
+        
         x = self.middle(x) + self.pos_embed
+
         x = x.contiguous().view(*B, H, W, C)
 
         for i_residual, i in zip(
