@@ -30,7 +30,7 @@ class PatchMergingV2(nn.Module):
         self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
         self.norm = norm_layer(2 * dim)  # difference
 
-    def forward(self, x: Tensor, c: Tensor):
+    def forward(self, x: Tensor):
         """
         Args:
             x (Tensor): input tensor with expected layout of [..., H, W, C]
