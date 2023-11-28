@@ -5,22 +5,6 @@ from torch import Tensor
 from torchvision.ops.misc import MLP, Permute
 import torch.nn.functional as F
 
-def _match_dims_padding(x: Tensor, H: int, W: int):
-
-    # We are in Conv Dims here, H, W are last
-    mod_height = H - x.size(-2)
-    mod_width = W - x.size(-1)
-
-    pad_h1 = mod_height // 2
-    pad_h2 = mod_height - pad_h1
-    pad_w1 = mod_width // 2
-    pad_w2 = mod_width - pad_w1
-
-    if mod_height > 0 or mod_width > 0:
-        x = F.pad(x, (pad_w1, pad_w2, pad_h1, pad_h2), 'constant', 0)
-
-    return x
-
 class Patching(nn.Module):
     def __init__(self, 
                  embed_dim, 
@@ -64,3 +48,19 @@ class UnPatching(nn.Module):
             x = _match_dims_padding(x, H, W)
 
         return x
+
+def _match_dims_padding(x: Tensor, H: int, W: int):
+
+    # We are in Conv Dims here, H, W are last
+    mod_height = H - x.size(-2)
+    mod_width = W - x.size(-1)
+
+    pad_h1 = mod_height // 2
+    pad_h2 = mod_height - pad_h1
+    pad_w1 = mod_width // 2
+    pad_w2 = mod_width - pad_w1
+
+    if mod_height > 0 or mod_width > 0:
+        x = F.pad(x, (pad_w1, pad_w2, pad_h1, pad_h2), 'constant', 0)
+
+    return x

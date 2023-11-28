@@ -7,35 +7,6 @@ import torch.nn.functional as F
 
 from ...modules import Modulator
 
-def _pad_expansion(x: torch.Tensor, distributed: bool = False) -> torch.Tensor:
-    *B, H, W, C = x.shape
-    pad_c = (4 - C % 4) % 4  # Number of channels to add
-
-    # No padding needed
-    if pad_c == 0:
-        return x 
-    
-    if not distributed:
-        x = F.pad(x, (0, pad_c), "constant", 0)  # Pad with zeros to the end of channels
-        return x
-    else:
-        raise NotImplementedError()
-
-def _patch_expanding_pad(x: torch.Tensor) -> torch.Tensor:
-    *B, H_HALF, W_HALF, C_QUAD = x.shape
-
-    C = C_QUAD // 4
-
-    x = _pad_expansion(x)
-
-    x = x.view(*B, H_HALF, W_HALF, 2, 2, C)
-
-    x = x.permute(0, 1, 3, 2, 4, 5).contiguous()
-
-    x = x.view(*B, H_HALF * 2, W_HALF * 2, C)
-
-    return x
-
 class PatchExpandingV2_Modulated(nn.Module):
     """Patch Expanding Layer for Swin Transformer V2.
     Args:
@@ -86,3 +57,32 @@ class PatchExpandingV2_Modulated(nn.Module):
             x = x[:, :, :-1, :]
 
         return x
+
+def _pad_expansion(x: torch.Tensor, distributed: bool = False) -> torch.Tensor:
+    *B, H, W, C = x.shape
+    pad_c = (4 - C % 4) % 4  # Number of channels to add
+
+    # No padding needed
+    if pad_c == 0:
+        return x 
+    
+    if not distributed:
+        x = F.pad(x, (0, pad_c), "constant", 0)  # Pad with zeros to the end of channels
+        return x
+    else:
+        raise NotImplementedError()
+
+def _patch_expanding_pad(x: torch.Tensor) -> torch.Tensor:
+    *B, H_HALF, W_HALF, C_QUAD = x.shape
+
+    C = C_QUAD // 4
+
+    x = _pad_expansion(x)
+
+    x = x.view(*B, H_HALF, W_HALF, 2, 2, C)
+
+    x = x.permute(0, 1, 3, 2, 4, 5).contiguous()
+
+    x = x.view(*B, H_HALF * 2, W_HALF * 2, C)
+
+    return x
