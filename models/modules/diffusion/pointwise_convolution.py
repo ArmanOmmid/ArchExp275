@@ -16,4 +16,4 @@ class PointwiseConvolutionDiffusion(nn.Module):
             self.pointwise = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x: Tensor, c: Tensor):
-        return self.mod(self.pointwise, x, c)
+        return self.pointwise(self.mod(x, c))

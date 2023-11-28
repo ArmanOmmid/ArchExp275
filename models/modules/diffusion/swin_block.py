@@ -11,7 +11,7 @@ from torchvision.models.swin_transformer import SwinTransformerBlock, ShiftedWin
 from .embeddings import Modulator
 
 
-class SwinTransformerBlockV2Diffusion(SwinTransformerBlock):
+class SwinTransformerBlockV2D(SwinTransformerBlock):
     """
     Swin Transformer V2 Block for Diffusion
     Args:
@@ -57,11 +57,10 @@ class SwinTransformerBlockV2Diffusion(SwinTransformerBlock):
         self.mod2 = Modulator(dim)
 
     def forward(self, x: Tensor, c: Tensor):
-
+        # Here is the difference, we apply norm after the attention in V2.
+        # In V1 we applied norm before the attention.
         x = x + self.stochastic_depth(self.norm1(
-            self.mod1(x, c, self.attn))
-        )
+            self.attn(self.mod1(x, c))))
         x = x + self.stochastic_depth(self.norm2(
-            self.mod2(x, c, self.mlp))
-        )
+            self.mlp(self.mod2(x, c))))
         return x

@@ -1,7 +1,7 @@
 
 import torch.nn as nn
 
-class ConvolutionTripletLayer(nn.Module):
+class ConvolutionTriplet(nn.Module):
     def __init__(self, in_channels, layer_channels, kernel_size=3):
         super().__init__()
         self.layers = nn.Sequential(

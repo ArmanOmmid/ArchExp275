@@ -5,24 +5,39 @@ import math
 
 from torch import Tensor
 
-def modulate(x, shift, scale):
-    return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
-
 class Modulator(nn.Module):
-    def __init__(self, hidden_size, bias=True, *args, **kwargs) -> None:
+    def __init__(self, hidden_size, gate=False, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.adaLN_modulation = nn.Sequential(
             nn.SiLU(),
-            nn.Linear(hidden_size, hidden_size, bias=bias)
+            nn.Linear(hidden_size, hidden_size, bias=True)
         )
-
+        self.gate = gate
+        self.chunks = 3 if gate else 2
         nn.init.constant_(self.adaLN_modulation[-1].weight, 0)
         nn.init.constant_(self.adaLN_modulation[-1].bias, 0)
 
-    def forward(self, layer: nn.Module, x: Tensor, c: Tensor):
-        shift, scale, gate = self.adaLN_modulation(c)
-        x = gate.unsqueeze(1) * layer(modulate(x, shift, scale))
-        return x
+    def _get_modulation(self, c):
+        return self.adaLN_modulation(c).chunk(self.chunks, dim=1)
+
+    @staticmethod
+    def _modulate(x, shift, scale):
+        return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
+    
+    def forward(self, x: Tensor, c: Tensor, apply_gate=True):
+        if not self.gate:
+            shift, scale = self._get_modulation(c)
+            x = self._modulate(x, shift, scale)
+            return x
+        else:
+            shift, scale, gate = self._get_modulation(c)
+            gate = gate.unsqueeze(1)
+            x = self._modulate(x, shift, scale)
+            if apply_gate:
+                return x * gate
+            else:
+                return x, gate
+
 
 class TimestepEmbedder(nn.Module):
     """

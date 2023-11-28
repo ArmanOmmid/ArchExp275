@@ -7,6 +7,8 @@ import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
 
+from .embeddings import Modulator
+
 def _unfold_padding_prep(x: Tensor, window_height: int, window_width: int):
 
     *B, H, W, C = x.shape
@@ -86,15 +88,20 @@ class SwinResidualCrossAttentionDiffusion(nn.Module):
 
         self.window_height, self.window_width = window_size
 
+        self.mod_x = Modulator(embed_dim)
+        self.mod_r =  Modulator(embed_dim)
+
         self.cross_attention = nn.MultiheadAttention(embed_dim, num_heads, dropout=attention_dropout, batch_first=True)
         self.norm = norm_layer(embed_dim)
 
     def forward(self, x: Tensor, residual: Tensor, c: Tensor):
 
+        x = self.mod_x(x, c)
+        residual = self.mod_r(residual, c)
+
         # Unfolding
         x, _ = _extract_windows(x, self.window_height, self.window_width)
-        residual, padding_info = _extract_windows(residual, self.window_height, self.window_width,
-                                                                   self.stride_height, self.stride_width)
+        residual, padding_info = _extract_windows(residual, self.window_height, self.window_width)
 
         assert x.shape == residual.shape, f"{x.shape} != {residual.shape}"
 

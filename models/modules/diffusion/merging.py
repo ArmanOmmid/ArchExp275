@@ -41,6 +41,7 @@ class PatchMergingV2D(nn.Module):
             Tensor with layout of [..., H/2, W/2, 2*C]
         """
         x = _patch_merging_pad(x)
-        x = self.mod(self.reduction, x, c)  # ... H/2 W/2 2*C
+        x = self.mod(x, c)
+        x = self.reduction(x) # ... H/2 W/2 2*C
         x = self.norm(x)
         return x
