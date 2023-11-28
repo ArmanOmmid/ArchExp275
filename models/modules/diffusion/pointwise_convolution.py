@@ -5,7 +5,7 @@ from torch import Tensor
 
 from .embeddings import Modulator
 
-class PointwiseConvolutionDiffusion(nn.Module):
+class PointwiseConvolution_Modulated(nn.Module):
     def __init__(self, in_channels, out_channels, channel_last=True):
         super().__init__()
         

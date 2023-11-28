@@ -37,7 +37,7 @@ def _patch_expanding_pad(x: torch.Tensor) -> torch.Tensor:
 
     return x
 
-class PatchExpandingV2D(nn.Module):
+class PatchExpandingV2_Modulated(nn.Module):
     """Patch Expanding Layer for Swin Transformer V2 for Diffusion
     Args:
         dim (int): Number of input channels.

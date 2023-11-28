@@ -74,7 +74,7 @@ def _extract_windows(feature_map: Tensor, window_height: int, window_width: int)
 
     return windows, padding_info
 
-class SwinResidualCrossAttentionDiffusion(nn.Module):
+class SwinResidualCrossAttention_Modulated(nn.Module):
     def __init__(self, 
                  window_size,
                  embed_dim, 

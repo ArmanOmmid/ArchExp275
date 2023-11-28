@@ -2,7 +2,7 @@ import torch.nn as nn
 
 from .embeddings import Modulator
 
-class ConvolutionTripletDiffusion(nn.Module):
+class ConvolutionTriplet_Modulated(nn.Module):
     def __init__(self, in_channels, layer_channels, kernel_size=3):
         super().__init__()
         self.layers = nn.Sequential(

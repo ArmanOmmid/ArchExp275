@@ -11,7 +11,7 @@ from torchvision.models.swin_transformer import SwinTransformerBlockV2, PatchMer
 from torchvision.models.vision_transformer import EncoderBlock as ViTEncoderBlock
 
 from ._network import _Network
-from .modules import PatchExpandingV2, SwinResidualCrossAttention, ConvolutionTripletLayer, PointwiseConvolution 
+from .modules import PatchExpandingV2, SwinResidualCrossAttention, ConvolutionTriplet, PointwiseConvolution, create_positional_embedding
 
 class XNetSwinTransformer(_Network):
     """
@@ -48,8 +48,9 @@ class XNetSwinTransformer(_Network):
         num_classes: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = partial(nn.LayerNorm, eps=1e-5),
         middle_stages: int = 1,
-        final_downsample: bool = False,
+        final_downsample: bool = True,
         residual_cross_attention: bool = True,
+        input_size: List[int] = None, # Needed to deduce the positional encodings in the global ViT layers
         weights=None,
     ):
         super().__init__()
@@ -57,7 +58,7 @@ class XNetSwinTransformer(_Network):
 
         # Smooth Patch Partitioning
 
-        self.smooth_conv_in = ConvolutionTripletLayer(3, embed_dim, kernel_size=3)
+        self.smooth_conv_in = ConvolutionTriplet(3, embed_dim, kernel_size=3)
 
         self.patching = nn.Sequential(
             nn.Conv2d(
@@ -112,6 +113,17 @@ class XNetSwinTransformer(_Network):
         ################################################
         # MIDDLE
         ################################################
+
+        if input_size is None:
+            self.pos_embed = 0
+        else:
+            downsample_count = len(depths) - int(not final_downsample) # downsample is one less in this case
+            latent_H = input_size[0] // window_size[0]
+            latent_W = input_size[1] // window_size[1]
+            for i in range(downsample_count):
+                latent_H = latent_H // 2
+                latent_W = latent_W // 2
+            self.pos_embed = create_positional_embedding(current_features, latent_H*latent_H)
 
         self.middle : List[nn.Module] = []
         for _ in range(min(1, middle_stages)):
@@ -184,7 +196,7 @@ class XNetSwinTransformer(_Network):
         )
 
         # This will concatonate as a residual connection
-        self.smooth_conv_out = ConvolutionTripletLayer(2*embed_dim, embed_dim, kernel_size=3)
+        self.smooth_conv_out = ConvolutionTriplet(2*embed_dim, embed_dim, kernel_size=3)
 
         self.head = PointwiseConvolution(embed_dim, num_classes, channel_last=False)
 

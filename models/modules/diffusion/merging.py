@@ -18,7 +18,7 @@ def _patch_merging_pad(x: torch.Tensor) -> torch.Tensor:
     x = torch.cat([x0, x1, x2, x3], -1)  # ... H/2 W/2 4*C
     return x
 
-class PatchMergingV2D(nn.Module):
+class PatchMergingV2_Modulated(nn.Module):
     """Patch Merging Layer for Swin Transformer V2 for Diffusion
     Args:
         dim (int): Number of input channels.
