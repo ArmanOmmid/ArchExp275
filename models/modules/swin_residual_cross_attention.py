@@ -1,33 +1,42 @@
 from typing import *
 from functools import partial
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-def _unfold_padding_prep(x, window_height, window_width):
+def _unfold_padding_prep(x: torch.Tensor, window_height, window_width):
 
     *B, H, W, C = x.shape
 
-    pad_height = (H % window_height) // 2
-    pad_width = (W % window_width) // 2
+    mod_height = window_height - (H % window_height)
+    mod_width = window_width - (W % window_width)
 
-    if pad_height > 0 or pad_width > 0:
+    pad_h1 = mod_height // 2
+    pad_h2 = mod_height - pad_h1
+    pad_w1 = mod_width // 2
+    pad_w2 = mod_width - pad_w1
+
+    if mod_height > 0 or mod_width > 0:
         x = x.permute(0, -1, -3, -2)
-        x = F.pad(x, (pad_width, pad_width, pad_height, pad_height), 'constant', 0)
+        x = F.pad(x, (pad_w1, pad_w2, pad_h1, pad_h2), 'constant', 0)
         x = x.permute(0, -2, -1, -3)
 
-    padding_info = (pad_height, pad_width)
+    padding_info = (pad_h1, pad_h2, pad_w1, pad_w2)
     return x, padding_info
     
-def _fold_unpadding_prep(x, padding_info):
+def _fold_unpadding_prep(x: torch.Tensor, padding_info):
 
-    pad_height, pad_width = padding_info
+    pad_h1, pad_h2, pad_w1, pad_w2 = padding_info
 
-    if pad_height > 0:
-        x = x[:, pad_height:-pad_height, :, :]
-    if pad_width > 0:
-        x = x[:, :, pad_width:-pad_width, :]
+    if np.sum(padding_info) == 0:
+        return x
+
+    # Set 0 dimensional pads to None so they can be ignored with slicing
+    padding_info = [None if p == 0 else p for p in padding_info]
+
+    x = x[:, pad_h1:-pad_h2, pad_w1:-pad_w2, :]
 
     return x
 
@@ -71,7 +80,7 @@ def _extract_windows(feature_map: torch.Tensor, window_height, window_width, str
 
 class SwinResidualCrossAttention(nn.Module):
     def __init__(self, 
-                 window_size, 
+                 window_size,
                  embed_dim, 
                  num_heads,
                  stride = [None, None],

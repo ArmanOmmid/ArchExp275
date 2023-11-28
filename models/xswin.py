@@ -13,6 +13,20 @@ from torchvision.models.vision_transformer import EncoderBlock as ViTEncoderBloc
 from ._network import _Network
 from .modules import PatchExpandingV2, SwinResidualCrossAttention, ConvolutionTripletLayer, PointwiseConvolution 
 
+def _post_expand_trim(x, residual_shape):
+    # Because of patch expanding, there can be an unexpected additional dimension (just 1)
+    H_trim = x.size(-3) - residual_shape[-3] > 0
+    W_trim = x.size(-2) - residual_shape[-2] > 0
+
+    if H_trim and W_trim:
+        x = x[:, :-1, :-1, :]
+    elif H_trim:
+        x = x[:, :-1, :, :]
+    elif W_trim:
+        x = x[:, :, :-1, :]
+
+    return x
+
 
 class XNetSwinTransformer(_Network):
     """
@@ -31,7 +45,8 @@ class XNetSwinTransformer(_Network):
         norm_layer (nn.Module, optional): Normalization layer. Default: None.
         downsample_layer (nn.Module): Downsample layer (patch merging). Default: False.
         final_downsample (bool): Do a final downsampling for the encoder towards the mid-network.
-        cross_attention_residual: Use cross attention for Swin residual connections
+        cross_attention_residual (bool): Use cross attention for Swin residual connections
+        weights (str): Path to load weights
     """
 
     def __init__(
@@ -155,7 +170,7 @@ class XNetSwinTransformer(_Network):
 
                 stage.append(
                     SwinTransformerBlockV2(
-                        dim * (1 + int(i_layer == 0)), # First Swin Block in Decoder Stage gets Stacked
+                        dim * (1 + int(i_layer == 0)), # First Swin Block in Decoder Stage gets Stacked from Residuals
                         num_heads[i_stage] * (1 + int(i_layer == 0)), # Double heads in this case too
                         window_size=window_size,
                         shift_size=[0 if i_layer % 2 == 0 else w // 2 for w in window_size],
@@ -206,6 +221,7 @@ class XNetSwinTransformer(_Network):
         for i in range(0, len(self.encoder), 2):
 
             x = self.encoder[i](x) # Encoder Stage
+
             residuals.append(x)
             if i+1 < (len(self.encoder) - 1) or self.final_downsample:
                 x = self.encoder[i+1](x) # Downsample (PatchMerge)
@@ -222,10 +238,10 @@ class XNetSwinTransformer(_Network):
             if i > 0 or self.final_downsample:
                 x = self.decoder[i](x) # Upsample (PatchExpand)
 
-            residual = residuals[i_residual]
+            x = _post_expand_trim(x, residuals[i_residual].shape)
 
             if self.residual_cross_attention:
-                residual = self.decoder[i+1](x, residual) # Cross Attention Skip Connection
+                residual = self.decoder[i+1](x, residuals[i_residual]) # Cross Attention Skip Connection
 
             x = torch.cat((x, residual), dim=-1) # Dumb Skip Connection
 
