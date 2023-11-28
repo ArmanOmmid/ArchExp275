@@ -3,12 +3,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-def create_positional_embedding(embed_dim, H, W):
+def create_positional_embedding(embed_dim, H, W, device=None):
     # Note, these are frozen
     num_patches = H * W
-    pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim), requires_grad=False)
+    pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim), requires_grad=False, device=device)
     pos_embed_numpy = get_2d_sincos_pos_embed(embed_dim, [H, W])
     pos_embed.data.copy_(torch.from_numpy(pos_embed_numpy).float().unsqueeze(0))
+
     return pos_embed
 
 #################################################################################
