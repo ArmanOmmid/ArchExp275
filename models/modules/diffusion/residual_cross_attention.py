@@ -4,9 +4,10 @@ from functools import partial
 import numpy as np
 import torch
 import torch.nn as nn
+from torch import Tensor
 import torch.nn.functional as F
 
-def _unfold_padding_prep(x: torch.Tensor, window_height, window_width):
+def _unfold_padding_prep(x: Tensor, window_height: int, window_width: int):
 
     *B, H, W, C = x.shape
 
@@ -40,7 +41,7 @@ def _fold_unpadding_prep(x: torch.Tensor, padding_info):
 
     return x
 
-def _extract_windows(feature_map: torch.Tensor, window_height, window_width, stride_height=None, stride_width=None):
+def _extract_windows(feature_map: Tensor, window_height: int, window_width: int):
     """
     Extract local windows from a feature map for non-square windows and flatten them.
 
@@ -48,26 +49,19 @@ def _extract_windows(feature_map: torch.Tensor, window_height, window_width, str
     - feature_map: the input feature map, shape [B*, H, W, C]
     - window_height: the height of the window
     - window_width: the width of the window
-    - stride_height: the stride of the windows across the height of the feature map
-    - stride_width: the stride of the windows across the width of the feature map
 
     Returns:
     - windows: the local windows ready for attention, shape [B*, Window, S, C]
     """
 
-    if stride_height is None:
-        stride_height = window_height
-    if stride_width is None:
-        stride_width = window_width
-    
     *B, H, W, C = feature_map.shape
 
     feature_map, padding_info = _unfold_padding_prep(feature_map, window_height, window_width)
 
     # Unfold the feature map into windows for both dimensions
-    unfolded_height = feature_map.unfold(-3, window_height, stride_height) # New dim (from H) created at the end
+    unfolded_height = feature_map.unfold(-3, window_height, window_height) # New dim (from H) created at the end
 
-    unfolded_both = unfolded_height.unfold(-3, window_width, stride_width) # So we do -3 again for W
+    unfolded_both = unfolded_height.unfold(-3, window_width, window_width) # So we do -3 again for W
     # Send C to the back
     windows = unfolded_both.permute(0, -5, -4, -2, -1, -3)
 
@@ -78,32 +72,24 @@ def _extract_windows(feature_map: torch.Tensor, window_height, window_width, str
 
     return windows, padding_info
 
-class SwinResidualCrossAttention(nn.Module):
+class SwinResidualCrossAttentionDiffusion(nn.Module):
     def __init__(self, 
                  window_size,
                  embed_dim, 
                  num_heads,
-                 stride = [None, None],
                  attention_dropout = 0.0, 
                  norm_layer = partial(nn.LayerNorm, eps=1e-5),
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         assert len(window_size) == 2
-        if not stride[0] == stride[1] == None: 
-            raise NotImplementedError("Striding is not implemented (or wanted)") # -Arman
 
         self.window_height, self.window_width = window_size
-        self.stride_height = stride[0] if stride is not None else window_size[0]
-        self.stride_width = stride[1] if stride is not None else window_size[1]
 
-        self.norm_x = norm_layer(embed_dim)
-        self.norm_residual = norm_layer(embed_dim)
         self.cross_attention = nn.MultiheadAttention(embed_dim, num_heads, dropout=attention_dropout, batch_first=True)
+        self.norm = norm_layer(embed_dim)
 
-    def forward(self, x, residual):
-
-        x, residual = self.norm_x(x), self.norm_residual(residual)
+    def forward(self, x: Tensor, residual: Tensor, c: Tensor):
 
         # Unfolding
         x, _ = _extract_windows(x, self.window_height, self.window_width)
@@ -127,5 +113,7 @@ class SwinResidualCrossAttention(nn.Module):
 
         # Unpadding
         output = _fold_unpadding_prep(output, padding_info)
+
+        output = self.norm(output)
 
         return output

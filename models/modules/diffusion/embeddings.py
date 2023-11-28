@@ -5,7 +5,10 @@ import math
 
 from torch import Tensor
 
-class ConditioningModulator(nn.Module):
+def modulate(x, shift, scale):
+    return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
+
+class Modulator(nn.Module):
     def __init__(self, hidden_size, bias=True, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.adaLN_modulation = nn.Sequential(
@@ -13,15 +16,13 @@ class ConditioningModulator(nn.Module):
             nn.Linear(hidden_size, hidden_size, bias=bias)
         )
 
-    def forward(self, x: Tensor, c: Tensor, layer: nn.Module):
-        shift, scale, gate = self.adaLN_modulation(c)
-        x = gate.unsqueeze(1) * layer(self.modulate(x, shift, scale))
-        return x
-    
-    @staticmethod
-    def modulate(x, shift, scale):
-        return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
+        nn.init.constant_(self.adaLN_modulation[-1].weight, 0)
+        nn.init.constant_(self.adaLN_modulation[-1].bias, 0)
 
+    def forward(self, layer: nn.Module, x: Tensor, c: Tensor):
+        shift, scale, gate = self.adaLN_modulation(c)
+        x = gate.unsqueeze(1) * layer(modulate(x, shift, scale))
+        return x
 
 class TimestepEmbedder(nn.Module):
     """
@@ -35,6 +36,10 @@ class TimestepEmbedder(nn.Module):
             nn.Linear(hidden_size, hidden_size, bias=True),
         )
         self.frequency_embedding_size = frequency_embedding_size
+
+        nn.init.normal_(self.mlp[0].weight, std=0.02)
+        nn.init.normal_(self.mlp[2].weight, std=0.02)
+
 
     @staticmethod
     def timestep_embedding(t, dim, max_period=10000):
@@ -73,6 +78,8 @@ class LabelEmbedder(nn.Module):
         self.embedding_table = nn.Embedding(num_classes + use_cfg_embedding, hidden_size)
         self.num_classes = num_classes
         self.dropout_prob = dropout_prob
+
+        nn.init.normal_(self.embedding_table.weight, std=0.02)
 
     def token_drop(self, labels, force_drop_ids=None):
         """
