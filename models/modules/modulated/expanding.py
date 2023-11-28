@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from ...modules import Modulator
+
 def _pad_expansion(x: torch.Tensor, distributed: bool = False) -> torch.Tensor:
     *B, H, W, C = x.shape
     pad_c = (4 - C % 4) % 4  # Number of channels to add
@@ -44,10 +46,11 @@ class PatchExpandingV2_Modulated(nn.Module):
     def __init__(self, dim: int, norm_layer: Callable[..., nn.Module] = nn.LayerNorm):
         super().__init__()
         self.dim = dim # C
+        self.mod = Modulator(dim)
         self.expansion = nn.Linear(dim, 2 * dim, bias=False) # Linear expansion first to share more information
         self.norm = norm_layer(2 * dim)
 
-    def forward(self, x: torch.Tensor, target_shape=None):
+    def forward(self, x: torch.Tensor, c: torch.Tensor, target_shape=None):
         """
         Args:
             x (Tensor): input tensor with expected layout of [..., H, W, C]
@@ -55,6 +58,7 @@ class PatchExpandingV2_Modulated(nn.Module):
             Tensor with layout of [..., H/2, W/2, 2*C]
         """
         # Linear expansion first to share more information
+        x = self.mod(x, c)
         x = self.expansion(x)
         x = self.norm(x)
         x = _patch_expanding_pad(x)

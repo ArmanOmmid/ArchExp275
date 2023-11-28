@@ -8,6 +8,8 @@ from torch import nn, Tensor
 
 from torchvision.models.swin_transformer import SwinTransformerBlock, ShiftedWindowAttentionV2
 
+from ...modules import Modulator
+
 class SwinTransformerBlockV2_Modulated(SwinTransformerBlock):
     """
     Swin Transformer V2 Block.
@@ -50,9 +52,12 @@ class SwinTransformerBlockV2_Modulated(SwinTransformerBlock):
             attn_layer=attn_layer,
         )
 
-    def forward(self, x: Tensor):
+        self.mod1 = Modulator(dim)
+        self.mod2 = Modulator(dim)
+
+    def forward(self, x: Tensor, c: Tensor):
         # Here is the difference, we apply norm after the attention in V2.
         # In V1 we applied norm before the attention.
-        x = x + self.stochastic_depth(self.norm1(self.attn(x)))
-        x = x + self.stochastic_depth(self.norm2(self.mlp(x)))
+        x = x + self.stochastic_depth(self.norm1(self.attn(self.mod1(x, c))))
+        x = x + self.stochastic_depth(self.norm2(self.mlp(self.mod2(x, c))))
         return x

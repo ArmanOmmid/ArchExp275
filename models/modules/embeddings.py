@@ -4,18 +4,27 @@ import numpy as np
 import math
 
 from torch import Tensor
+from torchvision.ops.misc import MLP, Permute
 
 class Modulator(nn.Module):
-    def __init__(self, hidden_size, gate=False, *args, **kwargs) -> None:
+    def __init__(self, hidden_size, gate=False, channel_last=True, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.adaLN_modulation = nn.Sequential(
             nn.SiLU(),
             nn.Linear(hidden_size, hidden_size, bias=True)
         )
+
         self.gate = gate
         self.chunks = 3 if gate else 2
+
         nn.init.constant_(self.adaLN_modulation[-1].weight, 0)
         nn.init.constant_(self.adaLN_modulation[-1].bias, 0)
+
+        # For Conv Layers, channels are in the 3rd to last position!
+        self.channel_last = channel_last
+        if not channel_last:
+            self.permute_in = Permute([0, 2, 3, 1])
+            self.permute_out = Permute([0, 3, 1, 2])
 
     def _get_modulation(self, c):
         return self.adaLN_modulation(c).chunk(self.chunks, dim=1)
@@ -25,17 +34,31 @@ class Modulator(nn.Module):
         return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
     
     def forward(self, x: Tensor, c: Tensor, apply_gate=True):
+
+        if not self.channel_last:
+            x = self.permute_in(x)
+
         if not self.gate:
             shift, scale = self._get_modulation(c)
             x = self._modulate(x, shift, scale)
+            if not self.channel_last:
+                x = self.permute_out(x)
             return x
         else:
             shift, scale, gate = self._get_modulation(c)
             gate = gate.unsqueeze(1)
             x = self._modulate(x, shift, scale)
             if apply_gate:
-                return x * gate
+                x = x * gate
+                if not self.channel_last:
+                    x = self.permute_out(x)
+                return x
             else:
+                x = x, gate
+                if not self.channel_last:
+                    x = self.permute_out(x)
+                    gate = self.permute_out(gate)
+                    return x, gate
                 return x, gate
 
 

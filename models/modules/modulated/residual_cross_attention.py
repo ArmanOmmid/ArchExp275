@@ -8,6 +8,8 @@ import torch.nn.functional as F
 
 from torch import Tensor
 
+from ...modules import Modulator
+
 def _unfold_padding_prep(x: Tensor, window_height: int, window_width: int):
 
     *B, H, W, C = x.shape
@@ -87,21 +89,26 @@ class SwinResidualCrossAttention_Modulated(nn.Module):
 
         self.window_height, self.window_width = window_size
 
+        self.mod_x = Modulator(embed_dim)
+        self.mod_r = Modulator(embed_dim)
         self.cross_attention = nn.MultiheadAttention(embed_dim, num_heads, dropout=attention_dropout, batch_first=True)
         self.norm = norm_layer(embed_dim)
 
-    def forward(self, x: Tensor, residual: Tensor):
+    def forward(self, x: Tensor, r: Tensor, c: Tensor):
+
+        x = self.mod_x(x, c)
+        r = self.mod_r(r, c)
 
         # Unfolding
         x, _ = _extract_windows(x, self.window_height, self.window_width)
-        residual, padding_info = _extract_windows(residual, self.window_height, self.window_width)
+        r, padding_info = _extract_windows(r, self.window_height, self.window_width)
 
-        assert x.shape == residual.shape, f"{x.shape} != {residual.shape}"
+        assert x.shape == r.shape, f"{x.shape} != {r.shape}"
 
-        *B, H, W, WINDOW, C = residual.shape
+        *B, H, W, WINDOW, C = r.shape
 
         Q = x.reshape(-1, WINDOW, C)
-        K = V = residual.reshape(-1, WINDOW, C)
+        K = V = r.reshape(-1, WINDOW, C)
 
         # output = attended residuals
         output, attention_weights = self.cross_attention(Q, K, V)

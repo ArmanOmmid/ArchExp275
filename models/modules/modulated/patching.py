@@ -5,6 +5,8 @@ from torch import Tensor
 from torchvision.ops.misc import MLP, Permute
 import torch.nn.functional as F
 
+from ...modules import Modulator
+
 def _match_dims_padding(x: Tensor, H: int, W: int):
 
     # We are in Conv Dims here, H, W are last
@@ -28,6 +30,7 @@ class Patching_Modulated(nn.Module):
                  norm_layer = partial(nn.LayerNorm, eps=1e-5)):
         super().__init__()
 
+        self.mod = Modulator(embed_dim, channel_last=False)
         self.patching = nn.Sequential(
             nn.Conv2d(
                 embed_dim, embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
@@ -36,7 +39,8 @@ class Patching_Modulated(nn.Module):
             norm_layer(embed_dim),
         )
 
-    def forward(self, x):
+    def forward(self, x, c):
+        x = self.mod(x, c)
         return self.patching(x)
 
 class UnPatching_Modulated(nn.Module):
@@ -46,6 +50,7 @@ class UnPatching_Modulated(nn.Module):
                  norm_layer = partial(nn.BatchNorm2d, eps=1e-5)):
         super().__init__()
 
+        self.mod = Modulator(embed_dim)
         self.unpatching = nn.Sequential(
             Permute([0, 3, 1, 2]), # B H W C -> B C H W
             nn.ConvTranspose2d(
@@ -54,8 +59,8 @@ class UnPatching_Modulated(nn.Module):
             norm_layer(embed_dim), # NOTE : Swapped out from LayerNorm because we are Conv-ing
         )
 
-    def forward(self, x, target_shape=None):
-
+    def forward(self, x, c, target_shape=None):
+        x = self.mod(x, c)
         x = self.unpatching(x)
         
         if target_shape is not None:
