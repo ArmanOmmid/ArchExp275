@@ -64,15 +64,19 @@ class XNetSwinTransformer(_Network):
         if input_size is None:
             print("WARNING: Not Providing The Argument 'input_size' Means Latent ViT Blocks will NOT Have Positional Embedings")
 
+
+        self.embed_dim = embed_dim
+        self.depths = depths
+        self.window_size = window_size
+        self.residual_cross_attention = residual_cross_attention
+        self.final_downsample = final_downsample and global_stages > 0
+        total_stage_blocks = sum(depths)
+
         # Smooth Patch Partitioning
 
         self.smooth_conv_in = ConvolutionTriplet(3, embed_dim, kernel_size=3)
 
         self.patching = Patching(embed_dim=embed_dim, patch_size=patch_size, norm_layer=norm_layer)
-
-        self.residual_cross_attention = residual_cross_attention
-        self.final_downsample = final_downsample and global_stages > 0
-        total_stage_blocks = sum(depths)
 
         ################################################
         # ENCODER
@@ -119,13 +123,7 @@ class XNetSwinTransformer(_Network):
         if input_size is None:
             self.pos_embed = 0
         else:
-            downsample_count = len(depths) - int(not self.final_downsample) # downsample is one less in this case
-            latent_H = input_size[0] // window_size[0]
-            latent_W = input_size[1] // window_size[1]
-            for i in range(downsample_count):
-                latent_H = (latent_H // 2) + (latent_H % 2) # Dims are padded up
-                latent_W = (latent_W // 2)+ (latent_W % 2) # Dims are padded up
-            self.pos_embed = create_positional_embedding(current_features, latent_H, latent_W)
+            self.pos_embed = self.set_positional_embedding(input_size)
 
         self.middle : List[nn.Module] = []
         for _ in range((global_stages)):
@@ -259,3 +257,16 @@ class XNetSwinTransformer(_Network):
             x = x.squeeze(1)
 
         return x
+    
+    def set_positional_embedding(self, input_size):
+
+        downsample_count = len(self.depths) - int(not self.final_downsample) # downsample is one less in this case
+
+        latent_H = input_size[0] // self.window_size[0]
+        latent_W = input_size[1] // self.window_size[1]
+        for i in range(downsample_count):
+            latent_H = (latent_H // 2) + (latent_H % 2) # Dims are padded up
+            latent_W = (latent_W // 2)+ (latent_W % 2) # Dims are padded up
+
+        middle_stage_features = self.embed_dim * 2 ** (len(self.depths) - int(not self.final_downsample))
+        self.pos_embed = create_positional_embedding(middle_stage_features, latent_H, latent_W)
