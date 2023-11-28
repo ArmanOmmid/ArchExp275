@@ -263,7 +263,8 @@ class XNetSwinTransformer(_Network):
         if input_size is None or not self.has_global_stages:
             self.pos_embed = None
             return None
-
+        
+        device = next(self.parameters()).device
         downsample_count = len(self.depths) - int(not self.final_downsample) # downsample is one less in this case
 
         latent_H = input_size[0] // self.window_size[0]
@@ -275,10 +276,9 @@ class XNetSwinTransformer(_Network):
         middle_stage_features = self.embed_dim * 2 ** (len(self.depths) - int(not self.final_downsample))
         self.pos_embed = create_positional_embedding(middle_stage_features, latent_H, latent_W)
 
-        print(next(self.parameters()).device)
+        print(device)
 
-        self.pos_embed.to(next(self.parameters()).device)
+        self.pos_embed.to(device)
 
-        print(self.pos_embed.device)
 
         return self.pos_embed
