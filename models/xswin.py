@@ -206,7 +206,7 @@ class XNetSwinTransformer(_Network):
 
     def forward(self, x):
 
-        spatial_shape = (x.size(-2), x.size(-1))
+        original_spatial_shape = (x.size(-2), x.size(-1))
 
         conv_residual = self.smooth_conv_in(x)
     
@@ -234,8 +234,7 @@ class XNetSwinTransformer(_Network):
         ):
             
             if i > 0 or self.final_downsample:
-                x = self.decoder[i](x) # Upsample (PatchExpand)
-                x = self.decoder[i]._post_expand_trim(x, residuals[i_residual].shape)
+                x = self.decoder[i](x, target_shape=residuals[i_residual].shape[-2:]) # Upsample (PatchExpand)
 
             if self.residual_cross_attention:
                 residual = self.decoder[i+1](x, residuals[i_residual]) # Cross Attention Skip Connection
@@ -247,7 +246,7 @@ class XNetSwinTransformer(_Network):
             x = self.decoder[i+(1 + int(self.residual_cross_attention))](x)
 
         # Does equally spaced padding to recover the original shape to concat with
-        x = self.unpatching(x, target_spatial_shape=spatial_shape) # B H W C -> B C H W
+        x = self.unpatching(x, target_shape=original_spatial_shape) # B H W C -> B C H W
 
         x = torch.cat((x, conv_residual), dim=-3) # ..., C, H, W
 

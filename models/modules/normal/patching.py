@@ -54,12 +54,13 @@ class UnPatching(nn.Module):
             norm_layer(embed_dim), # NOTE : Swapped out from LayerNorm because we are Conv-ing
         )
 
-    def forward(self, x, target_spatial_shape=None):
+    def forward(self, x, target_shape=None):
+
         x = self.unpatching(x)
+        
+        if target_shape is not None:
+            assert len(target_shape) == 2, "Target Shape be of Length 2: (H, W)"
+            H, W = target_shape
+            x = _match_dims_padding(x, H, W)
 
-        if target_spatial_shape is None:
-            return x
-
-        H, W = target_spatial_shape
-        x = _match_dims_padding(x, H, W)
         return x

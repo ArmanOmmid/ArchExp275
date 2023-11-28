@@ -47,7 +47,7 @@ class PatchExpandingV2(nn.Module):
         self.expansion = nn.Linear(dim, 2 * dim, bias=False) # Linear expansion first to share more information
         self.norm = norm_layer(2 * dim)
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor, target_shape=None):
         """
         Args:
             x (Tensor): input tensor with expected layout of [..., H, W, C]
@@ -58,13 +58,21 @@ class PatchExpandingV2(nn.Module):
         x = self.expansion(x)
         x = self.norm(x)
         x = _patch_expanding_pad(x)
+
+        # Patch Expanding can OVER pad the data. We may need to Trim. Maximum Trim is just 1 dimension though.
+        if target_shape is not None:
+            assert len(target_shape) == 2, "Target Shape be of Length 2: (H, W)"
+            H, W = target_shape
+            x = self._post_expand_trim(x, H, W)
+
         return x
     
     @staticmethod
-    def _post_expand_trim(x, trimmed_shape):
-        # Because of patch expanding, there can be an unexpected additional dimension (just 1)
-        H_trim = x.size(-3) - trimmed_shape[-3] > 0
-        W_trim = x.size(-2) - trimmed_shape[-2] > 0
+    def _post_expand_trim(x, H, W):
+        # Because of patch expanding, there can be additional padded dimensions
+        # the excess is at most 1 dimension so just check if its greater than 0
+        H_trim = x.size(-3) - H > 0 
+        W_trim = x.size(-2) - W > 0
 
         if H_trim and W_trim:
             x = x[:, :-1, :-1, :]
