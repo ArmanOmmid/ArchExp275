@@ -16,8 +16,6 @@ from .modules import PatchExpandingV2, SwinResidualCrossAttention, ConvolutionTr
 
 class XNetSwinTransformer(_Network):
     """
-    Implements Swin Transformer from the `"Swin Transformer: Hierarchical Vision Transformer using
-    Shifted Windows" <https://arxiv.org/abs/2103.14030>`_ paper.
     Args:
         patch_size (List[int]): Patch size.
         embed_dim (int): Patch embedding dimension.
@@ -185,7 +183,7 @@ class XNetSwinTransformer(_Network):
             nn.BatchNorm2d(embed_dim, eps=1e-5), # NOTE : Swapped out from LayerNorm because we are Conv-ing
         )
 
-        # This will concatonate
+        # This will concatonate as a residual connection
         self.smooth_conv_out = ConvolutionTripletLayer(2*embed_dim, embed_dim, kernel_size=3)
 
         self.head = PointwiseConvolution(embed_dim, num_classes, channel_last=False)
@@ -245,28 +243,3 @@ class XNetSwinTransformer(_Network):
             x = x.squeeze(1)
 
         return x
-
-
-# import torch
-# import torch.nn.functional as F
-
-# # Assume feature_map is the input tensor of shape [batch_size, channels, height, width]
-# # Assume window_size is the size of the square window (e.g., 7 for a 7x7 window)
-
-# batch_size, channels, height, width = feature_map.shape
-# window_area = window_size * window_size
-
-# # Step 1: Partition the feature map into windows
-# windows = feature_map.unfold(2, window_size, window_size).unfold(3, window_size, window_size)
-# windows = windows.contiguous().view(batch_size, channels, -1, window_area)  # [B, C, num_windows, window_area]
-
-# # Step 2: Flatten and concatenate
-# windows = windows.permute(0, 2, 1, 3).contiguous().view(-1, channels, window_area)  # [B*num_windows, C, window_area]
-
-# # Step 3: Compute MSA in parallel for all windows
-# # self_attn is a layer/module that computes multihead self-attention
-# attn_windows = self_attn(windows)  # [B*num_windows, C, window_area]
-
-# # Step 4: Reshape and merge back to the original feature map shape
-# attn_windows = attn_windows.view(batch_size, -1, channels, window_area).permute(0, 2, 1, 3)
-# attn_feature_map = F.fold(attn_windows, output_size=(height, width), kernel_size=(window_size, window_size))
