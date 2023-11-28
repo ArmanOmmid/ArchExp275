@@ -6,8 +6,6 @@ import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
 
-from .embeddings import Modulator
-
 def _patch_merging_pad(x: torch.Tensor) -> torch.Tensor:
     H, W, _ = x.shape[-3:]
     x = F.pad(x, (0, 0, 0, W % 2, 0, H % 2))
@@ -29,11 +27,10 @@ class PatchMergingV2_Modulated(nn.Module):
         super().__init__()
         self.dim = dim
 
-        self.mod = Modulator(4 * dim)
         self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
         self.norm = norm_layer(2 * dim)  # difference
 
-    def forward(self, x: Tensor, c: Tensor):
+    def forward(self, x: Tensor):
         """
         Args:
             x (Tensor): input tensor with expected layout of [..., H, W, C]
@@ -41,7 +38,6 @@ class PatchMergingV2_Modulated(nn.Module):
             Tensor with layout of [..., H/2, W/2, 2*C]
         """
         x = _patch_merging_pad(x)
-        x = self.mod(x, c)
         x = self.reduction(x) # ... H/2 W/2 2*C
         x = self.norm(x)
         return x

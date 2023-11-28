@@ -1,6 +1,7 @@
+
 import torch.nn as nn
 
-from .embeddings import Modulator
+from ...modules import Modulator
 
 class ConvolutionTriplet_Modulated(nn.Module):
     def __init__(self, in_channels, layer_channels, kernel_size=3):
@@ -19,5 +20,5 @@ class ConvolutionTriplet_Modulated(nn.Module):
             nn.BatchNorm2d(layer_channels),
             nn.LeakyReLU(),
         )
-    def forward(self, x):
-        return self.layers(x)
+    def forward(self, x, c):
+        return self.layers(x, c)

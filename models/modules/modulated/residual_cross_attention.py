@@ -4,10 +4,9 @@ from functools import partial
 import numpy as np
 import torch
 import torch.nn as nn
-from torch import Tensor
 import torch.nn.functional as F
 
-from .embeddings import Modulator
+from torch import Tensor
 
 def _unfold_padding_prep(x: Tensor, window_height: int, window_width: int):
 
@@ -29,7 +28,7 @@ def _unfold_padding_prep(x: Tensor, window_height: int, window_width: int):
     padding_info = (pad_h1, pad_h2, pad_w1, pad_w2)
     return x, padding_info
     
-def _fold_unpadding_prep(x: torch.Tensor, padding_info):
+def _fold_unpadding_prep(x: Tensor, padding_info):
 
     pad_h1, pad_h2, pad_w1, pad_w2 = padding_info
 
@@ -43,7 +42,7 @@ def _fold_unpadding_prep(x: torch.Tensor, padding_info):
 
     return x
 
-def _extract_windows(feature_map: Tensor, window_height: int, window_width: int):
+def _extract_windows(feature_map: Tensor, window_height, window_width):
     """
     Extract local windows from a feature map for non-square windows and flatten them.
 
@@ -55,7 +54,7 @@ def _extract_windows(feature_map: Tensor, window_height: int, window_width: int)
     Returns:
     - windows: the local windows ready for attention, shape [B*, Window, S, C]
     """
-
+    
     *B, H, W, C = feature_map.shape
 
     feature_map, padding_info = _unfold_padding_prep(feature_map, window_height, window_width)
@@ -88,16 +87,10 @@ class SwinResidualCrossAttention_Modulated(nn.Module):
 
         self.window_height, self.window_width = window_size
 
-        self.mod_x = Modulator(embed_dim)
-        self.mod_r =  Modulator(embed_dim)
-
         self.cross_attention = nn.MultiheadAttention(embed_dim, num_heads, dropout=attention_dropout, batch_first=True)
         self.norm = norm_layer(embed_dim)
 
-    def forward(self, x: Tensor, residual: Tensor, c: Tensor):
-
-        x = self.mod_x(x, c)
-        residual = self.mod_r(residual, c)
+    def forward(self, x: Tensor, residual: Tensor):
 
         # Unfolding
         x, _ = _extract_windows(x, self.window_height, self.window_width)

@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class PointwiseConvolution(nn.Module):
     def __init__(self, in_channels, out_channels, channel_last=True):
-        super(PointwiseConvolution, self).__init__()
+        super().__init__()
         if channel_last:
             self.pointwise = nn.Linear(in_channels, out_channels)
         else:
