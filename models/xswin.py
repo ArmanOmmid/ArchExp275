@@ -234,7 +234,8 @@ class XNetSwinTransformer(_Network):
         ):
             
             if i > 0 or self.final_downsample:
-                x = self.decoder[i](x, target_shape=residuals[i_residual].shape[-2:]) # Upsample (PatchExpand)
+                residual_spatial_shape = residuals[i_residual].shape[-3:-1] # B H W C
+                x = self.decoder[i](x, target_shape=residual_spatial_shape) # Upsample (PatchExpand)
 
             if self.residual_cross_attention:
                 residual = self.decoder[i+1](x, residuals[i_residual]) # Cross Attention Skip Connection
