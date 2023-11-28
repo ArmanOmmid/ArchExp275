@@ -277,4 +277,6 @@ class XNetSwinTransformer(_Network):
 
         self.pos_embed.to(next(self.parameters()).device)
 
+        print(self.pos_embed.device)
+
         return self.pos_embed
