@@ -275,6 +275,8 @@ class XNetSwinTransformer(_Network):
         middle_stage_features = self.embed_dim * 2 ** (len(self.depths) - int(not self.final_downsample))
         self.pos_embed = create_positional_embedding(middle_stage_features, latent_H, latent_W)
 
+        print(next(self.parameters()).device)
+
         self.pos_embed.to(next(self.parameters()).device)
 
         print(self.pos_embed.device)
