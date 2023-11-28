@@ -200,7 +200,7 @@ class XNetSwinTransformer(_Network):
 
         conv_residual = self.smooth_conv_in(x)
     
-        x = self.patching(conv_residual)
+        x = self.patching(conv_residual) # B C H W -> B H W C
         
         residuals = []
         for i in range(0, len(self.encoder), 2):
@@ -234,7 +234,7 @@ class XNetSwinTransformer(_Network):
 
             x = self.decoder[i+(1 + int(self.residual_cross_attention))](x)
 
-        x = self.unpatching(x)
+        x = self.unpatching(x) # B H W C -> B C H W
 
         x = torch.cat((x, conv_residual), dim=-3) # ..., C, H, W
 
