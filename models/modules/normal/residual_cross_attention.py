@@ -90,7 +90,7 @@ class SwinResidualCrossAttention(nn.Module):
         self.cross_attention = nn.MultiheadAttention(embed_dim, num_heads, dropout=attention_dropout, batch_first=True)
         self.norm = norm_layer(embed_dim)
 
-    def forward(self, x: Tensor, residual: Tensor, c: Tensor):
+    def forward(self, x: Tensor, residual: Tensor):
 
         # Unfolding
         x, _ = _extract_windows(x, self.window_height, self.window_width)

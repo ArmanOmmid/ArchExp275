@@ -11,7 +11,8 @@ from torchvision.models.swin_transformer import SwinTransformerBlockV2, PatchMer
 from torchvision.models.vision_transformer import EncoderBlock as ViTEncoderBlock
 
 from ._network import _Network
-from .modules import PatchExpandingV2, SwinResidualCrossAttention, ConvolutionTriplet, PointwiseConvolution, create_positional_embedding
+from .modules import PatchExpandingV2, SwinResidualCrossAttention, ConvolutionTriplet, PointwiseConvolution, \
+    Patching, UnPatching, create_positional_embedding
 
 class XNetSwinTransformer(_Network):
     """
@@ -55,18 +56,15 @@ class XNetSwinTransformer(_Network):
     ):
         super().__init__()
         self.num_classes = num_classes
+        
+        if input_size is None:
+            print("WARNING: Not Providing The Argument 'input_size' Means Latent ViT Blocks will NOT Have Positional Embedings")
 
         # Smooth Patch Partitioning
 
         self.smooth_conv_in = ConvolutionTriplet(3, embed_dim, kernel_size=3)
 
-        self.patching = nn.Sequential(
-            nn.Conv2d(
-                embed_dim, embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
-            ),
-            Permute([0, 2, 3, 1]), # B C H W -> B H W C
-            norm_layer(embed_dim),
-        )
+        self.patching = Patching(embed_dim=embed_dim, patch_size=patch_size, norm_layer=norm_layer)
 
         self.residual_cross_attention = residual_cross_attention
         self.final_downsample = final_downsample
@@ -187,13 +185,7 @@ class XNetSwinTransformer(_Network):
 
         self.decoder = nn.ModuleList(self.decoder)
 
-        self.unpatching = nn.Sequential(
-            Permute([0, 3, 1, 2]), # B H W C -> B C H W
-            nn.ConvTranspose2d(
-                embed_dim, embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
-            ),
-            nn.BatchNorm2d(embed_dim, eps=1e-5), # NOTE : Swapped out from LayerNorm because we are Conv-ing
-        )
+        self.unpatching = UnPatching(embed_dim=embed_dim, patch_size=patch_size) # Norm Layer uses default BatchNorm
 
         # This will concatonate as a residual connection
         self.smooth_conv_out = ConvolutionTriplet(2*embed_dim, embed_dim, kernel_size=3)
@@ -210,6 +202,8 @@ class XNetSwinTransformer(_Network):
 
     def forward(self, x):
 
+        spatial_shape = (x.size(-2), x.size(-1))
+
         conv_residual = self.smooth_conv_in(x)
     
         x = self.patching(conv_residual) # B C H W -> B H W C
@@ -225,7 +219,7 @@ class XNetSwinTransformer(_Network):
 
         *B, H, W, C = x.shape
         x = x.contiguous().view(*B, H*W, C)
-        x = self.middle(x)
+        x = self.middle(x) + self.pos_embed
         x = x.contiguous().view(*B, H, W, C)
 
         for i_residual, i in zip(
@@ -246,7 +240,8 @@ class XNetSwinTransformer(_Network):
 
             x = self.decoder[i+(1 + int(self.residual_cross_attention))](x)
 
-        x = self.unpatching(x) # B H W C -> B C H W
+        # Does equally spaced padding to recover the original shape to concat with
+        x = self.unpatching(x, target_spatial_shape=spatial_shape) # B H W C -> B C H W
 
         x = torch.cat((x, conv_residual), dim=-3) # ..., C, H, W
 
