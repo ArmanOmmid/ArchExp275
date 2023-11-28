@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, NamedTuple, Optional
 
 import torch
 import torch.nn as nn
-from torchvision.ops.misc import MLP
+from torchvision.models.vision_transformer import MLPBlock
 
 from .embeddings import Modulator
 
@@ -51,48 +51,3 @@ class ViTBlock_Modulated(nn.Module):
         y = self.ln_2(x)
         y = self.mlp(y)
         return x + y
-
-class MLPBlock(MLP):
-    """Transformer MLP block."""
-
-    _version = 2
-
-    def __init__(self, in_dim: int, mlp_dim: int, dropout: float):
-        super().__init__(in_dim, [mlp_dim, in_dim], activation_layer=nn.GELU, inplace=None, dropout=dropout)
-
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    nn.init.normal_(m.bias, std=1e-6)
-
-    def _load_from_state_dict(
-        self,
-        state_dict,
-        prefix,
-        local_metadata,
-        strict,
-        missing_keys,
-        unexpected_keys,
-        error_msgs,
-    ):
-        version = local_metadata.get("version", None)
-
-        if version is None or version < 2:
-            # Replacing legacy MLPBlock with MLP. See https://github.com/pytorch/vision/pull/6053
-            for i in range(2):
-                for type in ["weight", "bias"]:
-                    old_key = f"{prefix}linear_{i+1}.{type}"
-                    new_key = f"{prefix}{3*i}.{type}"
-                    if old_key in state_dict:
-                        state_dict[new_key] = state_dict.pop(old_key)
-
-        super()._load_from_state_dict(
-            state_dict,
-            prefix,
-            local_metadata,
-            strict,
-            missing_keys,
-            unexpected_keys,
-            error_msgs,
-        )
