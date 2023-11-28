@@ -59,17 +59,18 @@ class XNetSwinTransformer(_Network):
         weights=None,
     ):
         super().__init__()
-        self.num_classes = num_classes
         
-        if input_size is None:
-            print("WARNING: Not Providing The Argument 'input_size' Means Latent ViT Blocks will NOT Have Positional Embedings")
+        if input_size is None and global_stages > 0:
+            print("WARNING: Not Providing The Argument 'input_size' Means Global ViT Blocks will NOT Have Positional Embedings")
 
-
+        self.num_classes = num_classes
         self.embed_dim = embed_dim
         self.depths = depths
         self.window_size = window_size
         self.residual_cross_attention = residual_cross_attention
-        self.final_downsample = final_downsample and global_stages > 0
+
+        self.has_global_stages = global_stages > 0
+        self.final_downsample = final_downsample and self.has_global_stages
         total_stage_blocks = sum(depths)
 
         # Smooth Patch Partitioning
@@ -120,10 +121,7 @@ class XNetSwinTransformer(_Network):
         # MIDDLE
         ################################################
 
-        if input_size is None:
-            self.pos_embed = 0
-        else:
-            self.set_positional_embedding(input_size)
+        self.set_positional_embedding(input_size)
 
         self.middle : List[nn.Module] = []
         for _ in range((global_stages)):
@@ -222,7 +220,9 @@ class XNetSwinTransformer(_Network):
         *B, H, W, C = x.shape
         x = x.contiguous().view(*B, H*W, C)
 
-        x = self.middle(x) + self.pos_embed
+        x = self.middle(x)
+        if self.pos_embed is not None:
+            x  = x + self.pos_embed
 
         x = x.contiguous().view(*B, H, W, C)
 
@@ -259,6 +259,10 @@ class XNetSwinTransformer(_Network):
         return x
     
     def set_positional_embedding(self, input_size):
+
+        if input_size is None or not self.has_global_stages:
+            self.pos_embed = None
+            return None
 
         downsample_count = len(self.depths) - int(not self.final_downsample) # downsample is one less in this case
 
