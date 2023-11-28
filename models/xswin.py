@@ -114,7 +114,7 @@ class XNetSwinTransformer(_Network):
 
         self.encoder = nn.ModuleList(self.encoder)
 
-        current_features = embed_dim * 2 ** (len(depths) - int(not self.final_downsample))
+        middle_stage_features = embed_dim * 2 ** (len(depths) - int(not self.final_downsample))
 
         ################################################
         # MIDDLE
@@ -123,15 +123,15 @@ class XNetSwinTransformer(_Network):
         if input_size is None:
             self.pos_embed = 0
         else:
-            self.pos_embed = self.set_positional_embedding(input_size)
+            self.set_positional_embedding(input_size)
 
         self.middle : List[nn.Module] = []
         for _ in range((global_stages)):
             self.middle.append(
                 ViTEncoderBlock(
                     num_heads = num_heads[-1], # Use number of heads as final Swin Encoder Block
-                    hidden_dim = current_features,
-                    mlp_dim = int(current_features * mlp_ratio),
+                    hidden_dim = middle_stage_features,
+                    mlp_dim = int(middle_stage_features * mlp_ratio),
                     dropout = dropout,
                     attention_dropout = attention_dropout,
                     norm_layer = norm_layer,
@@ -221,7 +221,7 @@ class XNetSwinTransformer(_Network):
 
         *B, H, W, C = x.shape
         x = x.contiguous().view(*B, H*W, C)
-        
+
         x = self.middle(x) + self.pos_embed
 
         x = x.contiguous().view(*B, H, W, C)
@@ -270,3 +270,5 @@ class XNetSwinTransformer(_Network):
 
         middle_stage_features = self.embed_dim * 2 ** (len(self.depths) - int(not self.final_downsample))
         self.pos_embed = create_positional_embedding(middle_stage_features, latent_H, latent_W)
+
+        return self.pos_embed
