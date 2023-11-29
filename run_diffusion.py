@@ -166,10 +166,7 @@ def main(args):
     MODEL_PRINT_PATH = os.path.join(experiment_dir, "modules.txt")
     MODEL_CONFIGS_PATH = os.path.join(experiment_dir, "config.json")
     with open(MODEL_SUMMARY_PATH, "w") as f:
-        original_stdout = sys.stdout
-        sys.stdout = f
-        summary(model, input_size=[1, input_channels, *input_size], depth=4)
-        sys.stdout = original_stdout
+        f.write(summary(model, input_size=[1, input_channels, *input_size], depth=4).__str__())
     with open(MODEL_PRINT_PATH, "w") as f:
         f.write(model.__str__())
     with open(MODEL_CONFIGS_PATH, 'w') as f:
