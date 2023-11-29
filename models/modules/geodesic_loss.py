@@ -38,7 +38,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
         cos_theta = torch.clamp(cos_theta, -1, 1)  # Numerical stability
         theta = torch.acos(cos_theta)
 
-        rotation_loss = torch.mean(theta)
+        rotation_loss = 0 # torch.mean(theta)
 
         print(rotation_loss, translation_loss)
 
