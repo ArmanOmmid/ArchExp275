@@ -6,6 +6,7 @@ torch.backends.cudnn.allow_tf32 = True
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision import transforms
+from torchinfo import summary
 import numpy as np
 from collections import OrderedDict
 from PIL import Image
@@ -15,7 +16,6 @@ from time import time
 import argparse
 import logging
 import os
-import sys
 
 # from models import DiT_models
 from diffusers.models import AutoencoderKL
@@ -139,6 +139,7 @@ def main(args):
                            output_latent_dims=output_latent_dims, 
                            )
 
+    summary(model)
     # print(model)
     # print(args)
     
