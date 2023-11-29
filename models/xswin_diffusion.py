@@ -70,6 +70,7 @@ class XNetSwinTransformerDiffusion(_Network):
             print("WARNING: Not Providing The Argument 'input_size' Means Global ViT Blocks will NOT Have Positional Embedings")
 
         self.num_classes = num_classes
+        self.patch_size = patch_size
         self.embed_dim = embed_dim
         self.depths = depths
         self.window_size = window_size
@@ -293,8 +294,8 @@ class XNetSwinTransformerDiffusion(_Network):
         device = next(self.parameters()).device
         downsample_count = len(self.depths) - int(not self.final_downsample) # downsample is one less in this case
 
-        latent_H = input_size[0] // self.window_size[0]
-        latent_W = input_size[1] // self.window_size[1]
+        latent_H = input_size[0] // self.patch_size[0]
+        latent_W = input_size[1] // self.patch_size[1]
         print(latent_H, latent_W)
         for i in range(downsample_count):
             latent_H = (latent_H // 2) + (latent_H % 2) # Dims are padded up
