@@ -12,7 +12,7 @@ from .modules import SwinTransformerBlockV2_Modulated, ViTEncoderBlock_Modulated
                         SwinResidualCrossAttention_Modulated, ConvolutionTriplet_Modulated, PointwiseConvolution_Modulated, \
                         create_positional_embedding, initialize_weights, TimestepEmbedder, LabelEmbedder, initalize_diffusion
 
-class XNetSwinTransformer(_Network):
+class XNetSwinTransformerDiffusion(_Network):
     """
     Args:
         patch_size (List[int]): Patch size.
