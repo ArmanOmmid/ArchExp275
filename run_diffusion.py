@@ -140,7 +140,7 @@ def main(args):
                            )
 
     summary(model, input_size=[1, input_latent_dims, IMG_H, IMG_W])
-    print(model)
+    # print(model)
     # print(args)
     
     ema = deepcopy(model).to(device)
