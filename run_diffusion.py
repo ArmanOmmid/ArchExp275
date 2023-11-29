@@ -116,7 +116,7 @@ def main(args):
 
     patch_size = [2, 2]
     embed_dim = 128
-    depths = [3]
+    depths = [3, 3, 1]
     num_heads = [8, 16, 32]
     window_size = [4, 4]
     num_classes = 101
@@ -128,7 +128,7 @@ def main(args):
     global_stages = 1
     input_size = [IMG_H, IMG_W]
     final_downsample = False
-    residual_cross_attention = False
+    residual_cross_attention = True
     class_dropout = 0.1
 
     model = XNetSwinTransformerDiffusion(patch_size, embed_dim, depths, 
