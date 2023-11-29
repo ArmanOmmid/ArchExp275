@@ -296,14 +296,11 @@ class XNetSwinTransformerDiffusion(_Network):
 
         latent_H = input_size[0] // self.patch_size[0]
         latent_W = input_size[1] // self.patch_size[1]
-        print(latent_H, latent_W)
         for i in range(downsample_count):
             latent_H = (latent_H // 2) + (latent_H % 2) # Dims are padded up
             latent_W = (latent_W // 2)+ (latent_W % 2) # Dims are padded up
-            print(latent_H, latent_W)
 
         middle_stage_features = self.embed_dim * 2 ** (len(self.depths) - int(not self.final_downsample))
-        print(middle_stage_features)
         self.pos_embed = create_positional_embedding(middle_stage_features, latent_H, latent_W, device)
 
         return self.pos_embed
