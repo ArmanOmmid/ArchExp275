@@ -22,6 +22,8 @@ class SpecialEuclideanGeodesicLoss(_Loss):
 
         print(p_T.shape, t_T.shape)
 
+        print((p_T - t_T).sum())
+
         translation_loss = self.translation_loss(p_T, t_T)
 
         p_R = predicted_transform[:, :3, :3]
