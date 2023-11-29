@@ -18,10 +18,10 @@ import os
 
 
 # from models import DiT_models
-from ..models.xswin_diffusion import XNetSwinTransformerDiffusion
 from .run_diffusion import create_diffusion
 from diffusers.models import AutoencoderKL
 
+from ..models.xswin_diffusion import XNetSwinTransformerDiffusion
 
 # Profiling
 from torch.profiler import profile, record_function, ProfilerActivity
