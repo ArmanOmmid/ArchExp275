@@ -15,12 +15,17 @@ from time import time
 import argparse
 import logging
 import os
+import sys
 
+file_path = os.path.realpath(__file__)
+repository_root = os.path.dirname(os.path.dirname(file_path))
+if repository_root not in sys.path:
+    sys.path.append(repository_root)
 
 # from models import DiT_models
 from diffusers.models import AutoencoderKL
-from runners.run_diffusion import create_diffusion
-from models.xswin_diffusion import XNetSwinTransformerDiffusion
+from .run_diffusion import create_diffusion
+from ..models.xswin_diffusion import XNetSwinTransformerDiffusion
 
 # Profiling
 from torch.profiler import profile, record_function, ProfilerActivity
