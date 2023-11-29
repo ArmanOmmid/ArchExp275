@@ -39,7 +39,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
 
         rotation_loss = torch.mean(theta)
 
-        return torch.tensor([rotation_loss, translation_loss, ortho_loss])
+        return torch.cat([rotation_loss, translation_loss, ortho_loss])
 
 
 
