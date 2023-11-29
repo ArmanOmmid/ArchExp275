@@ -20,10 +20,6 @@ class SpecialEuclideanGeodesicLoss(_Loss):
         p_T = predicted_transform[:, :3, 3]
         t_T = target_transform[:, :3, 3]
 
-        print(p_T.shape, t_T.shape)
-
-        print((p_T - t_T).sum())
-
         translation_loss = self.translation_loss(p_T, t_T)
 
         p_R = predicted_transform[:, :3, :3]
@@ -33,8 +29,6 @@ class SpecialEuclideanGeodesicLoss(_Loss):
         t_R = self.normalize(t_R)
 
         relative_rotation = torch.bmm(p_R, t_R.transpose(1, 2))
-
-        print(relative_rotation.shape)
 
         batch_trace = torch.diagonal(relative_rotation, dim1=1, dim2=2).sum(dim=1)
 
