@@ -61,7 +61,6 @@ class Modulator(nn.Module):
                     return x, gate
                 return x, gate
 
-
 class TimestepEmbedder(nn.Module):
     """
     Embeds scalar timesteps into vector representations.
@@ -104,7 +103,6 @@ class TimestepEmbedder(nn.Module):
         t_freq = self.timestep_embedding(t, self.frequency_embedding_size)
         t_emb = self.mlp(t_freq)
         return t_emb
-
 
 class LabelEmbedder(nn.Module):
     """

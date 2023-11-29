@@ -10,9 +10,9 @@ from ._network import _Network
 from .modules import SwinTransformerBlockV2_Modulated, ViTEncoderBlock_Modulated, \
                         PatchMergingV2_Modulated, PatchExpandingV2_Modulated, Patching_Modulated, UnPatching_Modulated, \
                         SwinResidualCrossAttention_Modulated, ConvolutionTriplet_Modulated, PointwiseConvolution_Modulated, \
-                        create_positional_embedding, initialize_weights, TimestepEmbedder, LabelEmbedder
+                        create_positional_embedding, initialize_weights, TimestepEmbedder, LabelEmbedder, initalize_diffusion
 
-class XNetSwinTransformer_Diffusion(_Network):
+class XNetSwinTransformer(_Network):
     """
     Args:
         patch_size (List[int]): Patch size.
@@ -27,8 +27,10 @@ class XNetSwinTransformer_Diffusion(_Network):
         num_classes (int): Number of classes for classification head. Default: 1000.
         block (nn.Module, optional): SwinTransformer Block. Default: None.
         norm_layer (nn.Module, optional): Normalization layer. Default: None.
-        downsample_layer (nn.Module): Downsample layer (patch merging). Default: False.
-        final_downsample (bool): Do a final downsampling for the encoder towards the mid-network.
+
+        global_stages (int): Global Attention ViT Layers between Encoder and Decoder
+        input_size (List[int]): Gives input size of the data. If not provided, Global ViT Layers will NOT have positional embeddings
+        final_downsample (bool): Do a final downsampling for the encoder towards the mid-network. If there are no Global ViT Layers, this is ignored.
         cross_attention_residual (bool): Use cross attention for Swin residual connections
         weights (str): Path to load weights
     """
@@ -46,32 +48,42 @@ class XNetSwinTransformer_Diffusion(_Network):
         stochastic_depth_prob: float = 0.1,
         num_classes: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = partial(nn.LayerNorm, eps=1e-5),
-        middle_stages: int = 1,
+        global_stages: int = 1, 
+        input_size: List[int] = None, # Needed to deduce the positional encodings in the global ViT layers
         final_downsample: bool = True,
         residual_cross_attention: bool = True,
-        input_size: List[int] = None, # Needed to deduce the positional encodings in the global ViT layers
         class_dropout_prob=0.1,
+        latent_dimensions = None,
         weights=None,
     ):
         super().__init__()
-        self.num_classes = num_classes
-        
-        if input_size is None:
-            print("WARNING: Not Providing The Argument 'input_size' Means Latent ViT Blocks will NOT Have Positional Embedings")
 
+        if latent_dimensions is None:
+            raise ValueError("Please Provide The Latent Diffusion Dimensionality")
+        
+        if input_size is None and global_stages > 0:
+            print("WARNING: Not Providing The Argument 'input_size' Means Global ViT Blocks will NOT Have Positional Embedings")
+
+        self.num_classes = num_classes
+        self.embed_dim = embed_dim
+        self.depths = depths
+        self.window_size = window_size
+        self.residual_cross_attention = residual_cross_attention
+
+        self.has_global_stages = global_stages > 0
+        self.final_downsample = final_downsample and self.has_global_stages
+        total_stage_blocks = sum(depths)
+
+        # Diffusion Embeddings
 
         self.t_embedder = TimestepEmbedder(embed_dim)
         self.y_embedder = LabelEmbedder(num_classes, embed_dim, class_dropout_prob)
 
         # Smooth Patch Partitioning
 
-        self.smooth_conv_in = ConvolutionTriplet_Modulated(3, embed_dim, kernel_size=3)
+        self.smooth_conv_in = ConvolutionTriplet_Modulated(latent_dimensions, embed_dim, kernel_size=3) # Our input now has latent dimensions instead of 3 (RGB)
 
         self.patching = Patching_Modulated(embed_dim=embed_dim, patch_size=patch_size, norm_layer=norm_layer)
-
-        self.residual_cross_attention = residual_cross_attention
-        self.final_downsample = final_downsample
-        total_stage_blocks = sum(depths)
 
         ################################################
         # ENCODER
@@ -109,36 +121,27 @@ class XNetSwinTransformer_Diffusion(_Network):
 
         self.encoder = nn.ModuleList(self.encoder)
 
-        current_features = embed_dim * 2 ** (len(depths) - int(not self.final_downsample))
+        middle_stage_features = embed_dim * 2 ** (len(depths) - int(not self.final_downsample))
 
         ################################################
         # MIDDLE
         ################################################
 
-        if input_size is None:
-            self.pos_embed = 0
-        else:
-            downsample_count = len(depths) - int(not final_downsample) # downsample is one less in this case
-            latent_H = input_size[0] // window_size[0]
-            latent_W = input_size[1] // window_size[1]
-            for i in range(downsample_count):
-                latent_H = latent_H // 2
-                latent_W = latent_W // 2
-            self.pos_embed = create_positional_embedding(current_features, latent_H*latent_H)
+        self.set_positional_embedding(input_size)
 
         self.middle : List[nn.Module] = []
-        for _ in range(min(1, middle_stages)):
+        for _ in range((global_stages)):
             self.middle.append(
                 ViTEncoderBlock_Modulated(
                     num_heads = num_heads[-1], # Use number of heads as final Swin Encoder Block
-                    hidden_dim = current_features,
-                    mlp_dim = int(current_features * mlp_ratio),
+                    hidden_dim = middle_stage_features,
+                    mlp_dim = int(middle_stage_features * mlp_ratio),
                     dropout = dropout,
                     attention_dropout = attention_dropout,
                     norm_layer = norm_layer,
                 )
             )
-        self.middle = nn.Sequential(*self.middle)
+        self.middle = nn.Sequential(*self.middle) if len(self.middle) > 0 else nn.Identity()
 
         ################################################
         # DECODER
@@ -193,33 +196,41 @@ class XNetSwinTransformer_Diffusion(_Network):
         # This will concatonate as a residual connection
         self.smooth_conv_out = ConvolutionTriplet_Modulated(2*embed_dim, embed_dim, kernel_size=3)
 
-        self.head = PointwiseConvolution_Modulated(embed_dim, num_classes, channel_last=False)
+        self.head = PointwiseConvolution_Modulated(embed_dim, latent_dimensions, channel_last=False) # NOTE : we now "segment" back to the original dimensionality
 
         initialize_weights(self)
+
+        initalize_diffusion(self)
 
         self.load(weights)
 
     def forward(self, x, t, y):
 
-        spatial_shape = (x.size(-2), x.size(-1))
+        t = self.t_embedder(t)
+        y = self.y_embedder(y, self.training)
+        c = t + y
 
-        conv_residual = self.smooth_conv_in(x)
+        original_spatial_shape = (x.size(-2), x.size(-1))
+
+        conv_residual = self.smooth_conv_in(x, c)
     
-        x = self.patching(conv_residual) # B C H W -> B H W C
+        x = self.patching(conv_residual, c) # B C H W -> B H W C
         
         residuals = []
         for i in range(0, len(self.encoder), 2):
 
-            x = self.encoder[i](x) # Encoder Stage
+            x = self.encoder[i](x, c) # Encoder Stage
 
             residuals.append(x)
             if i+1 < (len(self.encoder) - 1) or self.final_downsample:
-                x = self.encoder[i+1](x) # Downsample (PatchMerge)
+                x = self.encoder[i+1](x, c) # Downsample (PatchMerge)
 
         *B, H, W, C = x.shape
         x = x.contiguous().view(*B, H*W, C)
-        
-        x = self.middle(x) + self.pos_embed
+
+        x = self.middle(x, c) # ViT Encoder
+        if self.pos_embed is not None:
+            x  = x + self.pos_embed
 
         x = x.contiguous().view(*B, H, W, C)
 
@@ -229,28 +240,48 @@ class XNetSwinTransformer_Diffusion(_Network):
         ):
             
             if i > 0 or self.final_downsample:
-                x = self.decoder[i](x) # Upsample (PatchExpand)
-                x = self.decoder[i]._post_expand_trim(x, residuals[i_residual].shape)
+                residual_spatial_shape = residuals[i_residual].shape[-3:-1] # B H W C
+                x = self.decoder[i](x, c, target_shape=residual_spatial_shape) # Upsample (PatchExpand)
 
             if self.residual_cross_attention:
-                residual = self.decoder[i+1](x, residuals[i_residual]) # Cross Attention Skip Connection
+                residual = self.decoder[i+1](x, residuals[i_residual], c) # Cross Attention Skip Connection
             else:
                 residual = residuals[i_residual]
 
             x = torch.cat((x, residual), dim=-1) # Dumb Skip Connection
 
-            x = self.decoder[i+(1 + int(self.residual_cross_attention))](x)
+            x = self.decoder[i+(1 + int(self.residual_cross_attention))](x, c) # Decoder Stage
 
         # Does equally spaced padding to recover the original shape to concat with
-        x = self.unpatching(x, target_spatial_shape=spatial_shape) # B H W C -> B C H W
+        x = self.unpatching(x, c, target_shape=original_spatial_shape) # B H W C -> B C H W
 
         x = torch.cat((x, conv_residual), dim=-3) # ..., C, H, W
 
-        x = self.smooth_conv_out(x)
+        x = self.smooth_conv_out(x, c)
 
-        x = self.head(x)
+        x = self.head(x, C)
 
         if self.num_classes == 1:
             x = x.squeeze(1)
 
         return x
+    
+    def set_positional_embedding(self, input_size):
+
+        if input_size is None or not self.has_global_stages:
+            self.pos_embed = None
+            return None
+        
+        device = next(self.parameters()).device
+        downsample_count = len(self.depths) - int(not self.final_downsample) # downsample is one less in this case
+
+        latent_H = input_size[0] // self.window_size[0]
+        latent_W = input_size[1] // self.window_size[1]
+        for i in range(downsample_count):
+            latent_H = (latent_H // 2) + (latent_H % 2) # Dims are padded up
+            latent_W = (latent_W // 2)+ (latent_W % 2) # Dims are padded up
+
+        middle_stage_features = self.embed_dim * 2 ** (len(self.depths) - int(not self.final_downsample))
+        self.pos_embed = create_positional_embedding(middle_stage_features, latent_H, latent_W, device)
+
+        return self.pos_embed

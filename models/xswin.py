@@ -234,7 +234,7 @@ class XNetSwinTransformer(_Network):
 
             x = torch.cat((x, residual), dim=-1) # Dumb Skip Connection
 
-            x = self.decoder[i+(1 + int(self.residual_cross_attention))](x)
+            x = self.decoder[i+(1 + int(self.residual_cross_attention))](x)  # Decoder Stage
 
         # Does equally spaced padding to recover the original shape to concat with
         x = self.unpatching(x, target_shape=original_spatial_shape) # B H W C -> B C H W
