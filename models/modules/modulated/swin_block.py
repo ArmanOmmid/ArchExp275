@@ -52,8 +52,8 @@ class SwinTransformerBlockV2_Modulated(SwinTransformerBlock):
             attn_layer=attn_layer,
         )
 
-        self.mod1 = Modulator(dim)
-        self.mod2 = Modulator(dim)
+        self.mod1 = Modulator(dim, n_unsqueeze=2)
+        self.mod2 = Modulator(dim, n_unsqueeze=2)
 
     def forward(self, x: Tensor, c: Tensor):
         # Here is the difference, we apply norm after the attention in V2.

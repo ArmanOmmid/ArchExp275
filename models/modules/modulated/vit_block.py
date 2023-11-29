@@ -24,8 +24,8 @@ class ViTEncoderBlock_Modulated(nn.Module):
         super().__init__()
         self.num_heads = num_heads
 
-        self.mod1 = Modulator(hidden_dim)
-        self.mod2 = Modulator(hidden_dim)
+        self.mod1 = Modulator(hidden_dim, n_unsqueeze=1)
+        self.mod2 = Modulator(hidden_dim, n_unsqueeze=1)
 
         # Attention block
         self.ln_1 = norm_layer(hidden_dim)

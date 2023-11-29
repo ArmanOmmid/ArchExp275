@@ -7,7 +7,7 @@ from ...modules import Modulator
 class PointwiseConvolution_Modulated(nn.Module):
     def __init__(self, in_channels, out_channels, channel_last=True):
         super().__init__()
-        self.mod = Modulator(in_channels, channel_last=channel_last)
+        self.mod = Modulator(in_channels, n_unsqueeze=2, channel_last=channel_last)
         if channel_last:
             self.pointwise = nn.Linear(in_channels, out_channels)
         else:

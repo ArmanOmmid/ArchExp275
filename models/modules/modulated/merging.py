@@ -18,7 +18,7 @@ class PatchMergingV2_Modulated(nn.Module):
     def __init__(self, dim: int, norm_layer: Callable[..., nn.Module] = nn.LayerNorm):
         super().__init__()
         self.dim = dim
-        self.mod = Modulator(dim)
+        self.mod = Modulator(dim, n_unsqueeze=2)
         self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
         self.norm = norm_layer(2 * dim)  # difference
 
