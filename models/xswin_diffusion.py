@@ -56,12 +56,13 @@ class XNetSwinTransformerDiffusion(_Network):
         final_downsample: bool = True,
         residual_cross_attention: bool = True,
         class_dropout_prob=0.1,
-        latent_dimensions=None,
+        input_latent_dims=None,
+        output_latent_dims=None,
         weights=None,
     ):
         super().__init__()
 
-        if latent_dimensions is None:
+        if input_latent_dims is None or output_latent_dims is None:
             raise ValueError("Please Provide The Latent Diffusion Dimensionality")
         
         if input_size is None and global_stages > 0:
@@ -85,7 +86,7 @@ class XNetSwinTransformerDiffusion(_Network):
 
         # Smooth Patch Partitioning
 
-        self.smooth_conv_in = ConvolutionTriplet_Modulated(latent_dimensions, embed_dim, mod_dims=self.mod_dims, kernel_size=3) # Our input now has latent dimensions instead of 3 (RGB)
+        self.smooth_conv_in = ConvolutionTriplet_Modulated(input_latent_dims, embed_dim, mod_dims=self.mod_dims, kernel_size=3) # Our input now has latent dimensions instead of 3 (RGB)
 
         self.patching = Patching_Modulated(embed_dim=embed_dim, patch_size=patch_size, mod_dims=self.mod_dims, norm_layer=norm_layer)
 
@@ -203,7 +204,7 @@ class XNetSwinTransformerDiffusion(_Network):
         # This will concatonate as a residual connection
         self.smooth_conv_out = ConvolutionTriplet_Modulated(2*embed_dim, embed_dim, mod_dims=self.mod_dims, kernel_size=3)
 
-        self.head = PointwiseConvolution_Modulated(embed_dim, latent_dimensions, mod_dims=self.mod_dims, channel_last=False) # NOTE : we now "segment" back to the original dimensionality
+        self.head = PointwiseConvolution_Modulated(embed_dim, output_latent_dims, mod_dims=self.mod_dims, channel_last=False) # NOTE : we now "segment" back to the original dimensionality
 
         initialize_weights(self)
 
@@ -273,8 +274,6 @@ class XNetSwinTransformerDiffusion(_Network):
         x = self.smooth_conv_out(x, c)
 
         x = self.head(x, c)
-
-        print(x.shape)
 
         return x
     
