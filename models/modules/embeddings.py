@@ -7,8 +7,10 @@ from torch import Tensor
 from torchvision.ops.misc import MLP, Permute
 
 class Modulator(nn.Module):
-    def __init__(self, modulation_dimensions, n_unsqueeze, gate=False, channel_last=True, *args, **kwargs) -> None:
+    def __init__(self, in_dims, out_dims, n_unsqueeze, gate=False, channel_last=True, *args, **kwargs) -> None:
         """
+        in_dims : The dimensions of the modulation embeddings
+        out_dims : The dimensions to match the current data (x) dimensions
         n_unsqueeze : Then number of dimensions between BATCH and CHANNELS after permuatations:
             - B H W C  -> 2
             - B C H W  -> 2 (after permutation, we have B H W C)
@@ -26,7 +28,7 @@ class Modulator(nn.Module):
 
         self.adaLN_modulation = nn.Sequential(
             nn.SiLU(),
-            nn.Linear(modulation_dimensions, self.chunks * modulation_dimensions, bias=True)
+            nn.Linear(in_dims, self.chunks * out_dims, bias=True)
         )
 
         nn.init.constant_(self.adaLN_modulation[-1].weight, 0)
