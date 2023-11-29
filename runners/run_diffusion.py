@@ -18,8 +18,8 @@ import os
 
 
 # from models import DiT_models
-from XSwinDiffusion.models.xswin_diffusion import XNetSwinTransformerDiffusion
-from XSwinDiffusion.runners.run_diffusion import create_diffusion
+from ..models.xswin_diffusion import XNetSwinTransformerDiffusion
+from .run_diffusion import create_diffusion
 from diffusers.models import AutoencoderKL
 
 
@@ -114,7 +114,7 @@ def main(args):
         # input_size=latent_size,
         # num_classes=args.num_classes
     # )
-    
+
     patch_size = [2, 2]
     embed_dim = 128
     depths = [3, 3, 2]
