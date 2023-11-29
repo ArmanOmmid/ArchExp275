@@ -120,7 +120,7 @@ class XNetSwinTransformerDiffusion(_Network):
             self.encoder.append(ConditionedSequential(*stage))
             # Patch Merging Layer
             if i_stage < (len(depths) - 1) or self.final_downsample:
-                self.encoder.append(PatchMergingV2_Modulated(dim, norm_layer, mod_dims=self.mod_dims))
+                self.encoder.append(PatchMergingV2_Modulated(dim, mod_dims=self.mod_dims, norm_layer=norm_layer))
 
         self.encoder = nn.ModuleList(self.encoder)
 
@@ -161,7 +161,7 @@ class XNetSwinTransformerDiffusion(_Network):
 
             # add patch merging layer
             if i_stage < (len(depths) - 1) or self.final_downsample:
-                self.decoder.append(PatchExpandingV2_Modulated(2*dim, norm_layer, mod_dims=self.mod_dims)) # NOTE : Double input dim
+                self.decoder.append(PatchExpandingV2_Modulated(2*dim, mod_dims=self.mod_dims, norm_layer=norm_layer)) # NOTE : Double input dim
 
             if self.residual_cross_attention:
               self.decoder.append(
