@@ -274,6 +274,8 @@ class XNetSwinTransformerDiffusion(_Network):
 
         x = self.head(x, c)
 
+        print(x.shape)
+
         return x
     
     def set_positional_embedding(self, input_size):
