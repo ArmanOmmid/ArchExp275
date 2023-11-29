@@ -3,6 +3,8 @@ from .positional import create_positional_embedding
 from .embeddings import TimestepEmbedder, LabelEmbedder, Modulator
 from .initialize import initialize_weights, initalize_diffusion
 from .conditioned_sequential import ConditionedSequential
+from .lambda_module import LambdaModule
+from .geodesic_loss import SpecialEuclideanGeodesicLoss
 
 from .normal.convolution_triplet import ConvolutionTriplet
 from .normal.residual_cross_attention import SwinResidualCrossAttention

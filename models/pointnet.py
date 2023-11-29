@@ -4,6 +4,7 @@ import torch.nn as nn
 from torchvision.ops.misc import Permute
 
 from ._network import _Network
+from .modules import LambdaModule
 
 class TNet(nn.Module):
     def __init__(self, k=3, *args, **kwargs) -> None:
@@ -12,37 +13,40 @@ class TNet(nn.Module):
         self. k = k
         self.permute = Permute([0, 2, 1])
         self.conv = nn.Sequential(
-            nn.Conv1d(k ,64, 1),
+            nn.Conv1d(k, 64, 1),
             nn.BatchNorm1d(64),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Conv1d(64, 128, 1),
             nn.BatchNorm1d(128),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Conv1d(128 ,1024, 1),
             nn.BatchNorm1d(1024),
-            nn.ReLU(),
+            nn.LeakyReLU(),
         )
-        self.maxpool = nn.MaxPool1d(100)
+        # agnostic to number of points
+        self.maxpool = LambdaModule(lambda x: torch.max(x, 2, keepdim=True)[0])
         self.fc = nn.Sequential(
             nn.Linear(1024, 512),
             nn.BatchNorm1d(512),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(512, 256),
             nn.BatchNorm1d(256),
-            nn.ReLU(),
+            nn.LeakyReLU(),
         )
-        self.head = nn.Linear(256, k*k)
+        self.pose = nn.Linear(256, k*k)
+
+        self.identity_vector = nn.Parameter(torch.eye(k).flatten(), requires_grad=False)
 
     def forward(self, x: torch.Tensor):
-
-        x = self.permute(x)
+        
+        # x = self.permute(x)
         # B C L
         x = self.conv(x)
         x = self.maxpool(x)
         x = x.squeeze(-1)
         x = self.fc(x)
-        x = self.head(x)
-        x += torch.eye(self.k).flatten().to(x.device)
+        x = self.pose(x)
+        x += self.identity_vector
         x = x.view(-1, self.k, self.k)
         return x
 
@@ -50,38 +54,70 @@ class PointNet(_Network):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self.input_tnet = TNet(3)
+        self.permute = Permute([0, 2, 1])
 
-        self.feature_tnet = TNet(64)
+        self.input_tnet = TNet(3)
 
         self.conv1 = nn.Sequential(
             nn.Conv1d(3, 64, 1),
             nn.BatchNorm1d(64),
-            nn.ReLU(),
+            nn.LeakyReLU(),
         )
+
+        self.feature_tnet = TNet(64)
 
         self.conv2 = nn.Sequential(
             nn.Conv1d(64, 128, 1),
             nn.BatchNorm1d(128),
-            nn.ReLU(),
+            nn.LeakyReLU(),
         )
 
         self.conv3 = nn.Sequential(
             nn.Conv1d(128, 1024, 1),
             nn.BatchNorm1d(1024),
-            nn.ReLU()
         )
 
+        self.maxpool = LambdaModule(lambda x: torch.max(x, 2, keepdim=True)[0])
+
+        self.fc = nn.Sequential(
+            nn.Linear(1024, 512),
+            nn.BatchNorm1d(512),
+            nn.LeakyReLU(),
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.LeakyReLU(),
+        )
+
+        self.pose = nn.Linear(256, 12)
+
+
     def forward(self, x: torch.Tensor):
+
+        # B L C or B L 3
         
-        num_points = x.size(2)
+        num_points = x.size(1)
+
+        x = self.permute(x)
 
         T1 = self.input_tnet(x)
-
-        x = x.permute(2, 1)
-        x = torch.bmm(x, T1)
-        x = x.permute(2, 1)
+        x = self.permute(torch.bmm(self.permute(x), T1))
 
         x = self.conv1(x)
+
+        T2 = self.feature_tnet(x)
+        x = self.permute(torch.bmm(self.permute(x), T2))
+
+        x = self.conv2(x)
+
+        x = self.conv3(x)
+        x = self.maxpool(x)
+
+        x = x.squeeze(-1)
+
+        x = self.fc(x)
+
+        x = self.pose(x)
+
+        x = x.view(-1, 3, 4)
 
         return x
