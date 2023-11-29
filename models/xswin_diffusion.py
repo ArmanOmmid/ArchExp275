@@ -55,16 +55,16 @@ class XNetSwinTransformerDiffusion(_Network):
         input_size: List[int] = None, # Needed to deduce the positional encodings in the global ViT layers
         final_downsample: bool = True,
         residual_cross_attention: bool = True,
+        input_channels=None,
+        output_channels=None,
         class_dropout_prob=0.1,
-        input_latent_dims=None,
-        output_latent_dims=None,
         smooth_conv=True,
         weights=None,
     ):
         super().__init__()
 
-        if input_latent_dims is None or output_latent_dims is None:
-            raise ValueError("Please Provide The Latent Diffusion Dimensionality")
+        if input_channels is None or output_channels is None:
+            raise ValueError("Please Provide The Input/Output Diffusion Dimensionality")
         
         if input_size is None and global_stages > 0:
             print("WARNING: Not Providing The Argument 'input_size' Means Global ViT Blocks will NOT Have Positional Embedings")
@@ -89,10 +89,10 @@ class XNetSwinTransformerDiffusion(_Network):
 
         # Smooth Patch Partitioning
         if self.smooth_conv:
-            self.smooth_conv_in = ConvolutionTriplet_Modulated(input_latent_dims, embed_dim, mod_dims=self.mod_dims, kernel_size=3) # Our input now has latent dimensions instead of 3 (RGB)
+            self.smooth_conv_in = ConvolutionTriplet_Modulated(input_channels, embed_dim, mod_dims=self.mod_dims, kernel_size=3) # Our input now has latent dimensions instead of 3 (RGB)
             self.patching = Patching_Modulated(embed_dim=embed_dim, patch_size=patch_size, mod_dims=self.mod_dims, norm_layer=norm_layer)
         else:
-            self.patching = Patching_Modulated(embed_dim=input_latent_dims, patch_size=patch_size, mod_dims=self.mod_dims, norm_layer=norm_layer)
+            self.patching = Patching_Modulated(embed_dim=input_channels, patch_size=patch_size, mod_dims=self.mod_dims, norm_layer=norm_layer)
 
         ################################################
         # ENCODER
@@ -208,7 +208,7 @@ class XNetSwinTransformerDiffusion(_Network):
         if self.smooth_conv:
             self.smooth_conv_out = ConvolutionTriplet_Modulated(2*embed_dim, embed_dim, mod_dims=self.mod_dims, kernel_size=3) # This will concatonate as a residual connection
 
-        self.head = PointwiseConvolution_Modulated(embed_dim, output_latent_dims, mod_dims=self.mod_dims, channel_last=False) # NOTE : we now "segment" back to the original dimensionality
+        self.head = PointwiseConvolution_Modulated(embed_dim, output_channels, mod_dims=self.mod_dims, channel_last=False) # NOTE : we now "segment" back to the original dimensionality
 
         initialize_weights(self)
 

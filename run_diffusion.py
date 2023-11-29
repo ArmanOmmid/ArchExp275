@@ -16,6 +16,7 @@ from time import time
 import argparse
 import logging
 import os
+import json
 
 # from models import DiT_models
 from diffusers.models import AutoencoderKL
@@ -138,7 +139,7 @@ def main(args):
                             class_dropout_prob=class_dropout, smooth_conv=smooth_conv,
                            )
     
-    configs = {
+    model_configs = {
         "patch_size" : patch_size,
         "embed_dim" : embed_dim,
         "depths" : depths,
@@ -154,11 +155,20 @@ def main(args):
         "smooth_conv" : smooth_conv,
     }
 
-    print(configs)
-
-    summary(model, input_size=[1, input_channels, *input_size], depth=4)
+    print(model_configs)
+    model_summary = summary(model, input_size=[1, input_channels, *input_size], depth=4)
     # print(model)
     # print(args)
+
+    MODEL_SUMMARY_PATH = os.path.join(args.results_dir, "torchinfo.txt")
+    MODEL_PRINT_PATH = os.path.join(args.results_dir, "model.txt")
+    MODEL_CONFIGS_PATH = os.path.join(args.result_dir, "config.json")
+    with open(MODEL_SUMMARY_PATH, "w") as f:
+        f.write(model_summary)
+    with open(MODEL_PRINT_PATH, "w") as f:
+        f.write(model)
+    with open(MODEL_CONFIGS_PATH, 'w') as f:
+        json.dump(model_configs, f, indent=4)
     
     ema = deepcopy(model).to(device)
     requires_grad(ema, False)
