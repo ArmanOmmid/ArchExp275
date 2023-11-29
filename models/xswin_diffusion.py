@@ -148,7 +148,7 @@ class XNetSwinTransformerDiffusion(_Network):
                     norm_layer = norm_layer,
                 )
             )
-        self.middle = ConditionedSequential(*self.middle) if len(self.middle) > 0 else lambda x: x
+        self.middle = ConditionedSequential(*self.middle) if len(self.middle) > 0 else lambda x, c: x
 
         ################################################
         # DECODER
