@@ -59,7 +59,7 @@ class Modulator(nn.Module):
 
         if not self.gate:
             shift, scale = self._get_modulation(c)
-            print(shift.shape, scale.shape)
+
             x = self._modulate(x, shift, scale)
             if not self.channel_last:
                 x = self.permute_out(x)

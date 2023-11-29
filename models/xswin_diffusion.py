@@ -225,8 +225,7 @@ class XNetSwinTransformerDiffusion(_Network):
         
         residuals = []
         for i in range(0, len(self.encoder), 2):
-            
-            print(self.encoder[i])
+        
             x = self.encoder[i](x, c) # Encoder Stage
 
             residuals.append(x)

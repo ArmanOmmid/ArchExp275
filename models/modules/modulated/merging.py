@@ -29,8 +29,8 @@ class PatchMergingV2_Modulated(nn.Module):
         Returns:
             Tensor with layout of [..., H/2, W/2, 2*C]
         """
-        x = _patch_merging_pad(x)
         x = self.mod(x, c)
+        x = _patch_merging_pad(x)
         x = self.reduction(x) # ... H/2 W/2 2*C
         x = self.norm(x)
         return x
