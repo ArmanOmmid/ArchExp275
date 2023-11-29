@@ -10,7 +10,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
 
         self.translation_loss = nn.MSELoss()
 
-    def normalize_rotation_matrix(self, rot_matrix):
+    def normalize(self, rot_matrix):
         u, s, v = torch.svd(rot_matrix)
         return torch.bmm(u, v.transpose(1, 2))
 
@@ -25,8 +25,8 @@ class SpecialEuclideanGeodesicLoss(_Loss):
         p_R = predicted_transform[:, :3, :3]
         t_R = target_transform[:, :3, :3]
 
-        p_R = self.normalize_rotation_matrix(p_R)
-        t_R = self.normalize_rotation_matrix(t_R)
+        p_R = self.normalize(p_R)
+        t_R = self.normalize(t_R)
 
         relative_rotation = torch.bmm(p_R, t_R.transpose(1, 2))
 
