@@ -162,9 +162,9 @@ def main(args):
     # print(model)
     # print(args)
 
-    MODEL_SUMMARY_PATH = os.path.join(args.results_dir, "torchinfo.txt")
-    MODEL_PRINT_PATH = os.path.join(args.results_dir, "model.txt")
-    MODEL_CONFIGS_PATH = os.path.join(args.results_dir, "config.json")
+    MODEL_SUMMARY_PATH = os.path.join(args.results_dir, "model_summary.txt")
+    MODEL_PRINT_PATH = os.path.join(args.results_dir, "model_print.txt")
+    MODEL_CONFIGS_PATH = os.path.join(args.results_dir, "model_config.json")
     with open(MODEL_SUMMARY_PATH, "w") as f:
         original_stdout = sys.stdout
         sys.stdout = f
