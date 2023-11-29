@@ -17,10 +17,12 @@ import logging
 import os
 import sys
 
-file_path = os.path.realpath(__file__)
+file_path = os.path.abspath(__file__)
 repository_root = os.path.dirname(os.path.dirname(file_path))
 if repository_root not in sys.path:
     sys.path.append(repository_root)
+
+print(sys.path)
 
 # from models import DiT_models
 from diffusers.models import AutoencoderKL
