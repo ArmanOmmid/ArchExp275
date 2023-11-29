@@ -226,9 +226,9 @@ class XNetSwinTransformerDiffusion(_Network):
 
         # These defaults are for torchinfo.summary 
         if t is None:
-            t = torch.zeros(x.size(0), dtype=x.int, device=x.device)
+            t = torch.zeros(x.size(0), dtype=torch.int, device=x.device)
         if y is None:
-            y = torch.zeros(x.size(0), dtype=x.int, device=x.device)
+            y = torch.zeros(x.size(0), dtype=torch.int, device=x.device)
 
         t = self.t_embedder(t)
         y = self.y_embedder(y, self.training)
