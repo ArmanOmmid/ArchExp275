@@ -20,7 +20,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
         p_T = predicted_transform[:, :3, 3]
         t_T = target_transform[:, :3, 3]
 
-        translation_loss = self.translation_loss(p_T, t_T)
+        translation_loss = torch.norm(p_T - t_T).mean()
 
         p_R = predicted_transform[:, :3, :3]
         t_R = target_transform[:, :3, :3]
