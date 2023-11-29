@@ -10,7 +10,8 @@ from ._network import _Network
 from .modules import SwinTransformerBlockV2_Modulated, ViTEncoderBlock_Modulated, \
                         PatchMergingV2_Modulated, PatchExpandingV2_Modulated, Patching_Modulated, UnPatching_Modulated, \
                         SwinResidualCrossAttention_Modulated, ConvolutionTriplet_Modulated, PointwiseConvolution_Modulated, \
-                        create_positional_embedding, initialize_weights, TimestepEmbedder, LabelEmbedder, initalize_diffusion
+                        create_positional_embedding, initialize_weights, \
+                        TimestepEmbedder, LabelEmbedder, initalize_diffusion, ConditionedSequential
 
 class XNetSwinTransformerDiffusion(_Network):
     """
@@ -114,7 +115,7 @@ class XNetSwinTransformerDiffusion(_Network):
                     )
                 )
                 stage_block_id += 1
-            self.encoder.append(nn.Sequential(*stage))
+            self.encoder.append(ConditionedSequential(*stage))
             # Patch Merging Layer
             if i_stage < (len(depths) - 1) or self.final_downsample:
                 self.encoder.append(PatchMergingV2_Modulated(dim, norm_layer))
@@ -141,7 +142,7 @@ class XNetSwinTransformerDiffusion(_Network):
                     norm_layer = norm_layer,
                 )
             )
-        self.middle = nn.Sequential(*self.middle) if len(self.middle) > 0 else nn.Identity()
+        self.middle = ConditionedSequential(*self.middle) if len(self.middle) > 0 else nn.Identity()
 
         ################################################
         # DECODER
@@ -187,7 +188,7 @@ class XNetSwinTransformerDiffusion(_Network):
                         PointwiseConvolution_Modulated(2*dim, dim) # Reduce the dimensionality after first Swin in Stage
                     )
                 stage_block_id += 1
-            self.decoder.append(nn.Sequential(*stage))
+            self.decoder.append(ConditionedSequential(*stage))
 
         self.decoder = nn.ModuleList(self.decoder)
 
@@ -224,7 +225,8 @@ class XNetSwinTransformerDiffusion(_Network):
         
         residuals = []
         for i in range(0, len(self.encoder), 2):
-
+            
+            print(self.encoder[i])
             x = self.encoder[i](x, c) # Encoder Stage
 
             residuals.append(x)
