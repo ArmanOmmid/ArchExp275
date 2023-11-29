@@ -17,6 +17,7 @@ class ViTEncoderBlock_Modulated(nn.Module):
         num_heads: int,
         hidden_dim: int,
         mlp_dim: int,
+        mod_dims: int, 
         dropout: float,
         attention_dropout: float,
         norm_layer: Callable[..., torch.nn.Module] = partial(nn.LayerNorm, eps=1e-6),
@@ -24,8 +25,8 @@ class ViTEncoderBlock_Modulated(nn.Module):
         super().__init__()
         self.num_heads = num_heads
 
-        self.mod1 = Modulator(hidden_dim, n_unsqueeze=1)
-        self.mod2 = Modulator(hidden_dim, n_unsqueeze=1)
+        self.mod1 = Modulator(mod_dims, n_unsqueeze=1)
+        self.mod2 = Modulator(mod_dims, n_unsqueeze=1)
 
         # Attention block
         self.ln_1 = norm_layer(hidden_dim)

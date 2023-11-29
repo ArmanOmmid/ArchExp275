@@ -80,6 +80,7 @@ class SwinResidualCrossAttention_Modulated(nn.Module):
                  window_size,
                  embed_dim, 
                  num_heads,
+                 mod_dims,
                  attention_dropout = 0.0, 
                  norm_layer = partial(nn.LayerNorm, eps=1e-5),
                  *args, **kwargs) -> None:
@@ -89,8 +90,8 @@ class SwinResidualCrossAttention_Modulated(nn.Module):
 
         self.window_height, self.window_width = window_size
 
-        self.mod_x = Modulator(embed_dim, n_unsqueeze=2)
-        self.mod_r = Modulator(embed_dim, n_unsqueeze=2)
+        self.mod_x = Modulator(mod_dims, n_unsqueeze=2)
+        self.mod_r = Modulator(mod_dims, n_unsqueeze=2)
         self.cross_attention = nn.MultiheadAttention(embed_dim, num_heads, dropout=attention_dropout, batch_first=True)
         self.norm = norm_layer(embed_dim)
 

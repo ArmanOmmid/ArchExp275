@@ -11,10 +11,11 @@ class Patching_Modulated(nn.Module):
     def __init__(self, 
                  embed_dim, 
                  patch_size,
+                 mod_dims,
                  norm_layer = partial(nn.LayerNorm, eps=1e-5)):
         super().__init__()
 
-        self.mod = Modulator(embed_dim, n_unsqueeze=2, channel_last=False)
+        self.mod = Modulator(mod_dims, n_unsqueeze=2, channel_last=False)
         self.patching = nn.Sequential(
             nn.Conv2d(
                 embed_dim, embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
@@ -31,10 +32,11 @@ class UnPatching_Modulated(nn.Module):
     def __init__(self, 
                  embed_dim, 
                  patch_size,
+                 mod_dims,
                  norm_layer = partial(nn.BatchNorm2d, eps=1e-5)):
         super().__init__()
 
-        self.mod = Modulator(embed_dim, n_unsqueeze=2)
+        self.mod = Modulator(mod_dims, n_unsqueeze=2)
         self.unpatching = nn.Sequential(
             Permute([0, 3, 1, 2]), # B H W C -> B C H W
             nn.ConvTranspose2d(

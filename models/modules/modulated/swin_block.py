@@ -30,6 +30,7 @@ class SwinTransformerBlockV2_Modulated(SwinTransformerBlock):
         self,
         dim: int,
         num_heads: int,
+        mod_dims: int, 
         window_size: List[int],
         shift_size: List[int],
         mlp_ratio: float = 4.0,
@@ -52,8 +53,8 @@ class SwinTransformerBlockV2_Modulated(SwinTransformerBlock):
             attn_layer=attn_layer,
         )
 
-        self.mod1 = Modulator(dim, n_unsqueeze=2)
-        self.mod2 = Modulator(dim, n_unsqueeze=2)
+        self.mod1 = Modulator(mod_dims, n_unsqueeze=2)
+        self.mod2 = Modulator(mod_dims, n_unsqueeze=2)
 
     def forward(self, x: Tensor, c: Tensor):
         # Here is the difference, we apply norm after the attention in V2.

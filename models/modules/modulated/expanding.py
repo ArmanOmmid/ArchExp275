@@ -14,7 +14,7 @@ class PatchExpandingV2_Modulated(nn.Module):
         norm_layer (nn.Module): Normalization layer. Default: nn.LayerNorm.
     """
 
-    def __init__(self, dim: int, norm_layer: Callable[..., nn.Module] = nn.LayerNorm):
+    def __init__(self, dim: int, mod_dims: int, norm_layer: Callable[..., nn.Module] = nn.LayerNorm):
         super().__init__()
         self.dim = dim # C
         self.mod = Modulator(dim, n_unsqueeze=2)

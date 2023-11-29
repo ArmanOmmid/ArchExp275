@@ -77,14 +77,15 @@ class XNetSwinTransformerDiffusion(_Network):
 
         # Diffusion Embeddings
 
+        self.mod_dims = embed_dim
         self.t_embedder = TimestepEmbedder(embed_dim)
         self.y_embedder = LabelEmbedder(num_classes, embed_dim, class_dropout_prob)
 
         # Smooth Patch Partitioning
 
-        self.smooth_conv_in = ConvolutionTriplet_Modulated(latent_dimensions, embed_dim, kernel_size=3) # Our input now has latent dimensions instead of 3 (RGB)
+        self.smooth_conv_in = ConvolutionTriplet_Modulated(latent_dimensions, embed_dim, mod_dims=self.mod_dims, kernel_size=3) # Our input now has latent dimensions instead of 3 (RGB)
 
-        self.patching = Patching_Modulated(embed_dim=embed_dim, patch_size=patch_size, norm_layer=norm_layer)
+        self.patching = Patching_Modulated(embed_dim=embed_dim, patch_size=patch_size, mod_dims=self.mod_dims, norm_layer=norm_layer)
 
         ################################################
         # ENCODER
@@ -105,6 +106,7 @@ class XNetSwinTransformerDiffusion(_Network):
                     SwinTransformerBlockV2_Modulated(
                         dim,
                         num_heads[i_stage],
+                        mod_dims=self.mod_dims, 
                         window_size=window_size,
                         shift_size=[0 if i_layer % 2 == 0 else w // 2 for w in window_size],
                         mlp_ratio=mlp_ratio,
@@ -118,7 +120,7 @@ class XNetSwinTransformerDiffusion(_Network):
             self.encoder.append(ConditionedSequential(*stage))
             # Patch Merging Layer
             if i_stage < (len(depths) - 1) or self.final_downsample:
-                self.encoder.append(PatchMergingV2_Modulated(dim, norm_layer))
+                self.encoder.append(PatchMergingV2_Modulated(dim, norm_layer, mod_dims=self.mod_dims))
 
         self.encoder = nn.ModuleList(self.encoder)
 
@@ -136,7 +138,8 @@ class XNetSwinTransformerDiffusion(_Network):
                 ViTEncoderBlock_Modulated(
                     num_heads = num_heads[-1], # Use number of heads as final Swin Encoder Block
                     hidden_dim = middle_stage_features,
-                    mlp_dim = int(middle_stage_features * mlp_ratio),
+                    mlp_dim = int(middle_stage_features * mlp_ratio), 
+                    mod_dims=self.mod_dims,
                     dropout = dropout,
                     attention_dropout = attention_dropout,
                     norm_layer = norm_layer,
@@ -158,12 +161,12 @@ class XNetSwinTransformerDiffusion(_Network):
 
             # add patch merging layer
             if i_stage < (len(depths) - 1) or self.final_downsample:
-                self.decoder.append(PatchExpandingV2_Modulated(2*dim, norm_layer)) # NOTE : Double input dim
+                self.decoder.append(PatchExpandingV2_Modulated(2*dim, norm_layer, mod_dims=self.mod_dims)) # NOTE : Double input dim
 
             if self.residual_cross_attention:
               self.decoder.append(
                 SwinResidualCrossAttention_Modulated(window_size=window_size, embed_dim=dim, 
-                                           num_heads=num_heads[i_stage], attention_dropout=attention_dropout,
+                                           num_heads=num_heads[i_stage], mod_dims=self.mod_dims, attention_dropout=attention_dropout,
                                            norm_layer=norm_layer))
 
             for i_layer in range(depths[i_stage]):
@@ -174,6 +177,7 @@ class XNetSwinTransformerDiffusion(_Network):
                     SwinTransformerBlockV2_Modulated(
                         dim * (1 + int(i_layer == 0)), # First Swin Block in Decoder Stage gets Stacked from Residuals
                         num_heads[i_stage] * (1 + int(i_layer == 0)), # Double heads in this case too
+                        mod_dims=self.mod_dims,
                         window_size=window_size,
                         shift_size=[0 if i_layer % 2 == 0 else w // 2 for w in window_size],
                         mlp_ratio=mlp_ratio,
@@ -185,19 +189,19 @@ class XNetSwinTransformerDiffusion(_Network):
                 )
                 if i_layer == 0:
                     stage.append(
-                        PointwiseConvolution_Modulated(2*dim, dim) # Reduce the dimensionality after first Swin in Stage
+                        PointwiseConvolution_Modulated(2*dim, dim, mod_dims=self.mod_dims) # Reduce the dimensionality after first Swin in Stage
                     )
                 stage_block_id += 1
             self.decoder.append(ConditionedSequential(*stage))
 
         self.decoder = nn.ModuleList(self.decoder)
 
-        self.unpatching = UnPatching_Modulated(embed_dim=embed_dim, patch_size=patch_size) # Norm Layer uses default BatchNorm
+        self.unpatching = UnPatching_Modulated(embed_dim=embed_dim, mod_dims=self.mod_dims, patch_size=patch_size) # Norm Layer uses default BatchNorm
 
         # This will concatonate as a residual connection
-        self.smooth_conv_out = ConvolutionTriplet_Modulated(2*embed_dim, embed_dim, kernel_size=3)
+        self.smooth_conv_out = ConvolutionTriplet_Modulated(2*embed_dim, embed_dim, mod_dims=self.mod_dims, kernel_size=3)
 
-        self.head = PointwiseConvolution_Modulated(embed_dim, latent_dimensions, channel_last=False) # NOTE : we now "segment" back to the original dimensionality
+        self.head = PointwiseConvolution_Modulated(embed_dim, latent_dimensions, mod_dims=self.mod_dims, channel_last=False) # NOTE : we now "segment" back to the original dimensionality
 
         initialize_weights(self)
 
