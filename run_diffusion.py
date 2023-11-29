@@ -139,7 +139,7 @@ def main(args):
                            output_latent_dims=output_latent_dims, 
                            )
 
-    summary(model)
+    summary(model, input_size=[1, input_latent_dims, IMG_H, IMG_W])
     # print(model)
     # print(args)
     
