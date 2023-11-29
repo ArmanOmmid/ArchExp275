@@ -162,7 +162,7 @@ def main(args):
 
     MODEL_SUMMARY_PATH = os.path.join(args.results_dir, "torchinfo.txt")
     MODEL_PRINT_PATH = os.path.join(args.results_dir, "model.txt")
-    MODEL_CONFIGS_PATH = os.path.join(args.result_dir, "config.json")
+    MODEL_CONFIGS_PATH = os.path.join(args.results_dir, "config.json")
     with open(MODEL_SUMMARY_PATH, "w") as f:
         f.write(model_summary)
     with open(MODEL_PRINT_PATH, "w") as f:
