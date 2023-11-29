@@ -146,6 +146,7 @@ def main(args):
         "num_heads" : num_heads,
         "window_size" : window_size,
         "num_class" : num_classes,
+        "global_stages" : global_stages,
         "input_size" : input_size,
         "final_downsample" : final_downsample,
         "residual_cross_attention" : residual_cross_attention,
