@@ -8,8 +8,6 @@ class SpecialEuclideanGeodesicLoss(_Loss):
     def __init__(self) -> None:
         super().__init__()
 
-        self.translation_loss = nn.MSELoss()
-
     def normalize(self, rot_matrix):
         u, s, v = torch.svd(rot_matrix)
         return torch.bmm(u, v.transpose(-2, -1))
