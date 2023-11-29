@@ -36,15 +36,15 @@ class ViTEncoderBlock_Modulated(nn.Module):
         self.ln_2 = norm_layer(hidden_dim)
         self.mlp = MLPBlock(hidden_dim, mlp_dim, dropout)
 
-    def forward(self, input: torch.Tensor):
+    def forward(self, input: torch.Tensor, c: torch.Tensor):
         torch._assert(input.dim() == 3, f"Expected (batch_size, seq_length, hidden_dim) got {input.shape}")
-        x = self.mod1(x)
+        x = self.mod1(x, c)
         x = self.ln_1(input)
         x, _ = self.self_attention(x, x, x, need_weights=False)
         x = self.dropout(x)
         x = x + input
 
-        x = self.mod2(x)
+        x = self.mod2(x, c)
         y = self.ln_2(x)
         y = self.mlp(y)
         return x + y

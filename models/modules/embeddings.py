@@ -53,13 +53,9 @@ class Modulator(nn.Module):
         return x * (1 + self._unsqueeze(scale)) + self._unsqueeze(shift)
     
     def forward(self, x: Tensor, c: Tensor, apply_gate=True):
-        print("A")
-        print(x.shape, c.shape)
 
         if not self.channel_last:
             x = self.permute_in(x)
-
-        print(x.shape)
 
         if not self.gate:
             shift, scale = self._get_modulation(c)
