@@ -35,7 +35,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
         batch_trace = torch.diagonal(relative_rotation, dim1=1, dim2=2).sum(dim=1)
 
         cos_theta = (batch_trace - 1) / 2
-        cos_theta = torch.clamp(cos_theta, -1, 1)  # Numerical stability
+        cos_theta = torch.clamp(cos_theta, -1+(1e-8), 1-(1e-8))  # Numerical stability
         print(cos_theta)
         theta = torch.acos(cos_theta)
 
