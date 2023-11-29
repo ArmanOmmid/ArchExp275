@@ -16,6 +16,7 @@ from time import time
 import argparse
 import logging
 import os
+import sys
 import json
 
 # from models import DiT_models
@@ -157,7 +158,7 @@ def main(args):
     }
 
     print(model_configs)
-    model_summary = summary(model, input_size=[1, input_channels, *input_size], depth=4)
+    summary(model, input_size=[1, input_channels, *input_size], depth=4)
     # print(model)
     # print(args)
 
@@ -165,7 +166,10 @@ def main(args):
     MODEL_PRINT_PATH = os.path.join(args.results_dir, "model.txt")
     MODEL_CONFIGS_PATH = os.path.join(args.results_dir, "config.json")
     with open(MODEL_SUMMARY_PATH, "w") as f:
-        f.write(model_summary)
+        original_stdout = sys.stdout
+        sys.stdout = f
+        summary(model, input_size=[1, input_channels, *input_size], depth=4)
+        sys.stdout = original_stdout
     with open(MODEL_PRINT_PATH, "w") as f:
         f.write(model)
     with open(MODEL_CONFIGS_PATH, 'w') as f:
