@@ -28,7 +28,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
         p_R = self.normalize(p_R)
         t_R = self.normalize(t_R)
 
-        relative_rotation = torch.bmm(p_R, t_R.transpose(1, 2))
+        relative_rotation = torch.bmm(t_R, p_R.transpose(1, 2))
 
         print(relative_rotation.shape)
 
