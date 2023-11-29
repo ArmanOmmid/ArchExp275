@@ -270,7 +270,7 @@ class XNetSwinTransformerDiffusion(_Network):
 
         x = self.smooth_conv_out(x, c)
 
-        x = self.head(x, C)
+        x = self.head(x, c)
 
         if self.num_classes == 1:
             x = x.squeeze(1)
