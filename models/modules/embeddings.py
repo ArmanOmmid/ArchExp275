@@ -45,7 +45,7 @@ class Modulator(nn.Module):
 
     def _unsqueeze(self, x):
         if self.n_unsqueeze == 1:
-            return x.unqueeze(1)
+            return x.unsqueeze(1)
         elif self.n_unsqueeze == 2:
             return x.unsqueeze(1).unsqueeze(1)
         else:
