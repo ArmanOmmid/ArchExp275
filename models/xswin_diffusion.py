@@ -205,6 +205,12 @@ class XNetSwinTransformerDiffusion(_Network):
         self.load(weights)
 
     def forward(self, x, t, y):
+        """
+        Forward pass.
+        x: (N, C, H, W) tensor of spatial inputs (images or latent representations of images)
+        t: (N,) tensor of diffusion timesteps
+        y: (N,) tensor of class labels
+        """
 
         t = self.t_embedder(t)
         y = self.y_embedder(y, self.training)

@@ -7,15 +7,27 @@ from torch import Tensor
 from torchvision.ops.misc import MLP, Permute
 
 class Modulator(nn.Module):
-    def __init__(self, hidden_size, gate=False, channel_last=True, *args, **kwargs) -> None:
+    def __init__(self, hidden_size, n_unsqueeze, gate=False, channel_last=True, *args, **kwargs) -> None:
+        """
+        n_unsqueeze : Then number of dimensions between BATCH and CHANNELS after permuatations:
+            - B H W C  -> 2
+            - B C H W  -> 2 (after permutation, we have B H W C)
+            - B L C    -> 1
+            We need this information for unsqueezing our modulation embeddings
+        channel_list : Whether the channel dimension is last or suspected to be in the 3rd to last spot (Conv Permutation)
+            - B H W C  -> True
+            - B C H W  -> False
+        """
         super().__init__(*args, **kwargs)
-        self.adaLN_modulation = nn.Sequential(
-            nn.SiLU(),
-            nn.Linear(hidden_size, hidden_size, bias=True)
-        )
 
+        self.n_unsqueeze = n_unsqueeze
         self.gate = gate
         self.chunks = 3 if gate else 2
+
+        self.adaLN_modulation = nn.Sequential(
+            nn.SiLU(),
+            nn.Linear(hidden_size, self.chunks * hidden_size, bias=True)
+        )
 
         nn.init.constant_(self.adaLN_modulation[-1].weight, 0)
         nn.init.constant_(self.adaLN_modulation[-1].bias, 0)
@@ -29,24 +41,36 @@ class Modulator(nn.Module):
     def _get_modulation(self, c):
         return self.adaLN_modulation(c).chunk(self.chunks, dim=1)
 
-    @staticmethod
-    def _modulate(x, shift, scale):
-        return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
+    def _unsqueeze(self, x):
+        if self.n_unsqueeze == 1:
+            return x.unqueeze(1)
+        elif self.n_unsqueeze == 2:
+            return x.unsqueeze(1).unsqueeze(1)
+        else:
+            raise NotImplementedError("Should Not Unsqueeze outside of 1 or 2 times ")
+
+    def _modulate(self, x, shift, scale):
+        return x * (1 + self._unsqueeze(scale)) + self._unsqueeze(shift)
     
     def forward(self, x: Tensor, c: Tensor, apply_gate=True):
+        print("A")
+        print(x.shape, c.shape)
 
         if not self.channel_last:
             x = self.permute_in(x)
 
+        print(x.shape)
+
         if not self.gate:
             shift, scale = self._get_modulation(c)
+            print(shift.shape, scale.shape)
             x = self._modulate(x, shift, scale)
             if not self.channel_last:
                 x = self.permute_out(x)
             return x
         else:
             shift, scale, gate = self._get_modulation(c)
-            gate = gate.unsqueeze(1)
+            gate = self._unsqueeze(gate)
             x = self._modulate(x, shift, scale)
             if apply_gate:
                 x = x * gate
@@ -54,7 +78,6 @@ class Modulator(nn.Module):
                     x = self.permute_out(x)
                 return x
             else:
-                x = x, gate
                 if not self.channel_last:
                     x = self.permute_out(x)
                     gate = self.permute_out(gate)
