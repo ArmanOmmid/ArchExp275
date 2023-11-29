@@ -54,6 +54,8 @@ class Modulator(nn.Module):
     
     def forward(self, x: Tensor, c: Tensor, apply_gate=True):
 
+        print(x.shape, c.shape)
+
         if not self.channel_last:
             x = self.permute_in(x)
 
