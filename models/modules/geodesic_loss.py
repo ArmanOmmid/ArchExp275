@@ -30,6 +30,8 @@ class SpecialEuclideanGeodesicLoss(_Loss):
 
         relative_rotation = torch.bmm(p_R, t_R.transpose(1, 2))
 
+        print(relative_rotation.shape)
+
         batch_trace = torch.diagonal(relative_rotation, dim1=1, dim2=2).sum(dim=1)
 
         cos_theta = (batch_trace - 1) / 2
