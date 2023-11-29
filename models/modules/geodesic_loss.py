@@ -14,7 +14,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
         u, s, v = torch.svd(rot_matrix)
         return torch.bmm(u, v.transpose(-2, -1))
 
-    def forward(self, predicted_transform, target_transform):
+    def forward(self, predicted_transform, target_transform, components=False):
         # Transforms are 3x4 with a 3x3 in SO(3) and a 3x1 in R(3)
 
         p_T = predicted_transform[:, :3, 3]
@@ -39,7 +39,9 @@ class SpecialEuclideanGeodesicLoss(_Loss):
 
         rotation_loss = torch.mean(theta)
 
-        return torch.stack([rotation_loss, translation_loss, ortho_loss])
+        if components:
+            return torch.stack([rotation_loss, translation_loss, ortho_loss])
+        return (rotation_loss + translation_loss + ortho_loss) / 3
 
 
 
