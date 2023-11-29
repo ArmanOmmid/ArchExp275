@@ -171,7 +171,7 @@ def main(args):
         summary(model, input_size=[1, input_channels, *input_size], depth=4)
         sys.stdout = original_stdout
     with open(MODEL_PRINT_PATH, "w") as f:
-        f.write(model)
+        f.write(model.__str__())
     with open(MODEL_CONFIGS_PATH, 'w') as f:
         json.dump(model_configs, f, indent=4)
     
