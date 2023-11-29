@@ -120,26 +120,43 @@ def main(args):
     num_heads = [8, 16, 32]
     window_size = [4, 4]
     num_classes = 101
-    input_latent_dims=4
-    output_latent_dims=8
-
-    IMG_H, IMG_W = latent_size, latent_size
 
     global_stages = 1
-    input_size = [IMG_H, IMG_W]
+    input_size = [latent_size, latent_size]
     final_downsample = False
     residual_cross_attention = True
+    input_channels = 4
+    output_channels = 8
     class_dropout = 0.1
+    smooth_conv = True
 
     model = XNetSwinTransformerDiffusion(patch_size, embed_dim, depths, 
-                           num_heads, window_size, num_classes=num_classes,
-                           global_stages=global_stages, input_size=input_size,
-                           final_downsample=final_downsample, residual_cross_attention=residual_cross_attention,
-                           class_dropout_prob=class_dropout, input_latent_dims=input_latent_dims,
-                           output_latent_dims=output_latent_dims, 
+                            num_heads, window_size, num_classes=num_classes,
+                            global_stages=global_stages, input_size=input_size,
+                            final_downsample=final_downsample, residual_cross_attention=residual_cross_attention,
+                            input_channels=input_channels, output_channels=output_channels, 
+                            class_dropout_prob=class_dropout, smooth_conv=smooth_conv,
                            )
+    
+    configs = {
+        "patch_size" : patch_size,
+        "embed_dim" : embed_dim,
+        "depths" : depths,
+        "num_heads" : num_heads,
+        "window_size" : window_size,
+        "num_class" : num_classes,
+        "input_size" : input_size,
+        "final_downsample" : final_downsample,
+        "residual_cross_attention" : residual_cross_attention,
+        "input_channels" : input_channels,
+        "output_channels" : output_channels,
+        "class_dropout_prob" : class_dropout,
+        "smooth_conv" : smooth_conv,
+    }
 
-    summary(model, input_size=[1, input_latent_dims, IMG_H, IMG_W], depth=4)
+    print(configs)
+
+    summary(model, input_size=[1, input_channels, *input_size], depth=4)
     # print(model)
     # print(args)
     
