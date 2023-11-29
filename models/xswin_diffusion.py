@@ -58,6 +58,7 @@ class XNetSwinTransformerDiffusion(_Network):
         class_dropout_prob=0.1,
         input_latent_dims=None,
         output_latent_dims=None,
+        smooth_conv=True,
         weights=None,
     ):
         super().__init__()
@@ -74,6 +75,7 @@ class XNetSwinTransformerDiffusion(_Network):
         self.window_size = window_size
         self.residual_cross_attention = residual_cross_attention
 
+        self.smooth_conv = smooth_conv
         self.has_global_stages = global_stages > 0
         self.final_downsample = final_downsample and self.has_global_stages
         total_stage_blocks = sum(depths)
@@ -85,10 +87,11 @@ class XNetSwinTransformerDiffusion(_Network):
         self.y_embedder = LabelEmbedder(num_classes, embed_dim, class_dropout_prob)
 
         # Smooth Patch Partitioning
-
-        self.smooth_conv_in = ConvolutionTriplet_Modulated(input_latent_dims, embed_dim, mod_dims=self.mod_dims, kernel_size=3) # Our input now has latent dimensions instead of 3 (RGB)
-
-        self.patching = Patching_Modulated(embed_dim=embed_dim, patch_size=patch_size, mod_dims=self.mod_dims, norm_layer=norm_layer)
+        if self.smooth_conv:
+            self.smooth_conv_in = ConvolutionTriplet_Modulated(input_latent_dims, embed_dim, mod_dims=self.mod_dims, kernel_size=3) # Our input now has latent dimensions instead of 3 (RGB)
+            self.patching = Patching_Modulated(embed_dim=embed_dim, patch_size=patch_size, mod_dims=self.mod_dims, norm_layer=norm_layer)
+        else:
+            self.patching = Patching_Modulated(embed_dim=input_latent_dims, patch_size=patch_size, mod_dims=self.mod_dims, norm_layer=norm_layer)
 
         ################################################
         # ENCODER
@@ -201,8 +204,8 @@ class XNetSwinTransformerDiffusion(_Network):
 
         self.unpatching = UnPatching_Modulated(embed_dim=embed_dim, mod_dims=self.mod_dims, patch_size=patch_size) # Norm Layer uses default BatchNorm
 
-        # This will concatonate as a residual connection
-        self.smooth_conv_out = ConvolutionTriplet_Modulated(2*embed_dim, embed_dim, mod_dims=self.mod_dims, kernel_size=3)
+        if self.smooth_conv:
+            self.smooth_conv_out = ConvolutionTriplet_Modulated(2*embed_dim, embed_dim, mod_dims=self.mod_dims, kernel_size=3) # This will concatonate as a residual connection
 
         self.head = PointwiseConvolution_Modulated(embed_dim, output_latent_dims, mod_dims=self.mod_dims, channel_last=False) # NOTE : we now "segment" back to the original dimensionality
 
@@ -226,9 +229,11 @@ class XNetSwinTransformerDiffusion(_Network):
 
         original_spatial_shape = (x.size(-2), x.size(-1))
 
-        conv_residual = self.smooth_conv_in(x, c)
-    
-        x = self.patching(conv_residual, c) # B C H W -> B H W C
+        if self.smooth_conv:
+            conv_residual = self.smooth_conv_in(x, c)
+            x = self.patching(conv_residual, c) # B C H W -> B H W C
+        else:
+            x = self.patching(x, c)
         
         residuals = []
         for i in range(0, len(self.encoder), 2):
@@ -266,12 +271,13 @@ class XNetSwinTransformerDiffusion(_Network):
 
             x = self.decoder[i+(1 + int(self.residual_cross_attention))](x, c) # Decoder Stage
 
+
         # Does equally spaced padding to recover the original shape to concat with
         x = self.unpatching(x, c, target_shape=original_spatial_shape) # B H W C -> B C H W
 
-        x = torch.cat((x, conv_residual), dim=-3) # ..., C, H, W
-
-        x = self.smooth_conv_out(x, c)
+        if self.smooth_conv:
+            x = torch.cat((x, conv_residual), dim=-3) # ..., C, H, W
+            x = self.smooth_conv_out(x, c)
 
         x = self.head(x, c)
 
