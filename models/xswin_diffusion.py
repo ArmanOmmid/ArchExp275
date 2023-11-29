@@ -216,13 +216,19 @@ class XNetSwinTransformerDiffusion(_Network):
 
         self.load(weights)
 
-    def forward(self, x, t, y):
+    def forward(self, x, t=None, y=None):
         """
         Forward pass.
         x: (N, C, H, W) tensor of spatial inputs (images or latent representations of images)
         t: (N,) tensor of diffusion timesteps
         y: (N,) tensor of class labels
         """
+
+        # These defaults are for torchinfo.summary 
+        if t is None:
+            t = torch.zeros(x.size(0), dtype=x.dtype, device=x.device)
+        if y is None:
+            y = torch.zeros(x.size(0), dtype=x.dtype, device=x.device)
 
         t = self.t_embedder(t)
         y = self.y_embedder(y, self.training)
