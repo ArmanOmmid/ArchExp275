@@ -12,6 +12,8 @@ from .modules import SwinTransformerBlockV2, ViTEncoderBlock, \
                         SwinResidualCrossAttention, ConvolutionTriplet, PointwiseConvolution, \
                         create_positional_embedding, initialize_weights
 
+# TODO : Replace torch.permute() with (batch) dim agnostic Tensor.transpose()
+
 class XNetSwinTransformer(_Network):
     """
     Args:
