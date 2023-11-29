@@ -26,7 +26,8 @@ class SpecialEuclideanGeodesicLoss(_Loss):
         t_R = target_transform[:, :3, :3]
 
         # p_R = self.normalize(p_R)
-        # t_R = self.normalize(t_R)
+
+        normalization_penalty = ((torch.bmm(p_R, p_R.transpose(-2, -1)) - 1) ** 2).sum()
 
         relative_rotation = torch.bmm(p_R, t_R.transpose(-2, -1))
 
@@ -38,7 +39,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
 
         rotation_loss = torch.mean(theta)
 
-        return (rotation_loss + translation_loss) / 2
+        return (rotation_loss + translation_loss + normalization_penalty) / 3
 
 
 
