@@ -53,7 +53,7 @@ class XNetSwinTransformerDiffusion(_Network):
         final_downsample: bool = True,
         residual_cross_attention: bool = True,
         class_dropout_prob=0.1,
-        latent_dimensions = None,
+        latent_dimensions=None,
         weights=None,
     ):
         super().__init__()
