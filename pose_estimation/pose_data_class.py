@@ -86,9 +86,7 @@ class PoseData:
 
     def get_mesh(self, object_id):
         if isinstance(self.object_cache, np.lib.npyio.NpzFile):
-            print("A")
             return self.object_cache[f"{object_id}"].item()
-        print("B")
         object_info = self.objects[object_id]
         location = object_info["location"].split("/")[-1]
         visual_dae_path = os.path.join(self.models_path, location, "visual_meshes", "visual.dae")
@@ -273,19 +271,60 @@ class PoseData:
 
         return self.data.keys()
 
-# class PoseDataNPZ():
-#     def __init__(self, data_path, models_path, npz_data_path, levels=None, split=None) -> None:
+class PoseDataNPZ():
+    def __init__(self, data_path, models_path, npz_data_path, levels=None, split=None) -> None:
         
-#         pose_data = PoseData(data_path, models_path)
-        
-#         if os.path.exists(npz_data_path):
-#             keys = 
-#         else:
+        self.pose_data = PoseData(data_path, models_path)
+        self.npz_data_path = npz_data_path
 
-#             .npz(npz_data_path)
+        keys = pose_data.keys()
 
+        if not os.path.exists(npz_data_path):
+            pose_data.npz(npz_data_path)
+        else:
+            print(f"{npz_data_path} - Already Exists")
 
+        self.objects = np.load(os.path.join(npz_data_path, "objects.npz"), allow_pickle=True)
 
+        self.data = {}
+        for key in keys:
+            l, s, v = key
+            scene_path = os.path.join(npz_data_path, "scenes", f"{l}-{s}-{v}.npz")
+            self.data[keys] = np.load(scene_path, allow_pickle=True) # NPZ Generator object 
+            # color, depth, label, meta
+
+    def npz(self):
+        if os.path.exists(self.npz_data_path):
+            print(f"Folder Already Exists: {self.npz_data_path}")
+            print("Rerun .npz(npz_dataset_path) ")
+            return
+        self.pose_data.npz(self.npz_data_path)
+
+    def keys(self):
+        return self.data.keys()
+
+    def values(self):
+        return self.data.values()
+
+    def items(self):
+        return self.data.items()
+
+    def __len__(self):
+        return len(self.keylist)
+
+    def __call__(self, idx):
+        # Get from global, flattened index
+        return self.data[self.keylist[idx]]
+
+    def __getitem__(self, indices):
+        if isinstance(indices, int):
+            indices = (1,)
+        if len(indices) == 3:
+            return self.data[indices]
+        value = self.nested_data
+        for i in indices:
+            value = value[i]
+        return value
 
 
 class PoseDataset(torch.utils.data.Dataset):
