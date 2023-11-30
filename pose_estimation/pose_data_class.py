@@ -231,6 +231,10 @@ class PoseDataset(torch.utils.data.Dataset):
         self.object_infos = [None] * NUM_CLASSES
         self.source_meshes = [None] * NUM_CLASSES
 
+        self.object_to_id = {}
+        for i, object_info in enumerate(self.pose_data.objects):
+            self.object_to_id[object_info["object"]] = i
+
         self.scene_cache = {}
         self.scene_count = len(pose_data.keys())
         self.rgbs = {}
@@ -240,16 +244,17 @@ class PoseDataset(torch.utils.data.Dataset):
 
         self.length = 0
         self.metas = {}
-        self.object_ids = []
         self.keys = []
+        self.object_ids = []
         for i, key in enumerate(pose_data.keys()):
             self.scene_cache[key] = False
             self.metas[key] = self.pose_data[key]["meta"]
-            num_objects = len(self.metas[key]["object_names"])
+            objects = self.metas[key]["object_names"]
+            count = len(objects)
 
-            self.object_ids += [None] * num_objects
-            self.keys += [None] * num_objects
-            self.length += num_objects
+            self.keys += [key] * count
+            self.object_ids += [self.object_to_id[item] for item in objects]
+            self.length += count
 
         self.point_cloud_cache = [False] * self.length
         self.source_points = [None] * self.length # From Models ; Baseline Objects
@@ -258,7 +263,7 @@ class PoseDataset(torch.utils.data.Dataset):
 
 
     def __len__(self):
-        return len(self.source_points)
+        return self.length
     
     def __getitem__(self, i):
 
@@ -278,6 +283,8 @@ class PoseDataset(torch.utils.data.Dataset):
         source_pcd = self.source_points[i]
         target_pcd = self.target_points[i]
         target_pose = self.target_poses[i]
+
+        print(source_pcd, target_pcd, target_pose, extras)
 
         return source_pcd, target_pcd, target_pose, extras
 
@@ -300,10 +307,11 @@ class PoseDataset(torch.utils.data.Dataset):
         indices = np.where(self.labels[key] == object_id)
         target_pcd = self.back_projections[key][indices]
 
-        self.cache_model_data(i, object_id) 
+        self.cache_model_data(object_id) 
 
         sample_count = len(target_pcd) if self.mesh_samples is None else self.mesh_samples
         source_pcd, faces = trimesh.sample.sample_surface(self.source_meshes[object_id], sample_count)
+        source_pcd * self.metas[key]["scales"][object_id]
 
         try:
             target_pose = self.metas[i]["poses_world"][object_id][:4, :] # 4x4 -> 3x4
