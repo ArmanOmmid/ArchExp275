@@ -139,9 +139,9 @@ class PoseData:
             else:
                 # Normlize condition
                 dtype = None
-                # dtype = np.uint8 if component == "color" \
-                #         else np.int16 if component == "depth" \
-                #         else normalizer
+                dtype = np.uint8 if component == "color" \
+                        else np.int16 if component == "depth" \
+                        else dtype
                 # Closure over variable
                 def closure(filepath, dtype=None):
                     # Generate PNG
@@ -251,33 +251,20 @@ class PoseData:
         scene_path = os.path.join(dataset_folder, "scenes")
         os.makedirs(scene_path)
         length = len(list(self.data.keys()))
-        max = -np.inf
-        min = np.inf
         for i, key in enumerate(self.data.keys()):
 
             l, s, v = key
 
             scene = pose_data.data[key]
 
-            # color = scene["color"]() # normalization 255
+            color = scene["color"]() # normalization 255
             depth = scene["depth"]() # normalization 1000
-            # print(depth.dtype)
-            _max = np.max(depth)
-            _min = np.min(depth)
-            if _max > max: max = _max
-            if _min < min: min = _min
-            # label = scene["label"]()
-            # meta = scene["meta"]
+            label = scene["label"]()
+            meta = scene["meta"]
             # projection = back_project(depth, meta)
 
-            # scene_path_i = os.path.join(scene_path, f"{l}-{s}-{v}")
-            # np.savez(scene_path_i + "a", color=color)
-            # np.savez(scene_path_i + "b", color=color, depth=depth)
-            # np.savez(scene_path_i + "c", color=color, depth=depth, label=label)
-            # np.savez(scene_path_i + "d", color=color, depth=depth, label=label, meta=meta)
-            # np.savez(scene_path_i + "e", color=color, depth=depth, label=label, meta=meta, projection=projection)
-        print(max, min)
-        assert 0
+            scene_path_i = os.path.join(scene_path, f"{l}-{s}-{v}")
+            np.savez(scene_path_i, color=color, depth=depth, label=label, meta=meta)
 
             # if i % 100 == 0 :
             #     print(f"{i} / {length}")
