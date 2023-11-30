@@ -306,6 +306,7 @@ class PoseDataset(torch.utils.data.Dataset):
 
         # False Register
         if len(indices) == 0:
+            print(f"MisRegister: {key}-{object_id}")
             self.keys.pop(i)
             self.object_ids.pop(i)
             self.point_cloud_cache.pop(i)
