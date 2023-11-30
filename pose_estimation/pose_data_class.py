@@ -215,80 +215,64 @@ class PoseData:
 class PoseDataset(torch.utils.data.Dataset):
     def __init__(self, data_path, models_path, levels=None, split=None, mesh_samples=None):
         
-        print("X")
         pose_data = PoseData(data_path, models_path)
 
-        print("Y")
         if split is not None:
             pose_data = pose_data.txt_split(split)
         if levels is not None:
             pose_data = pose_data.level_split(levels)
-        print("Z")
 
-        self.object_infos = []
-        self.source_meshes = []
-        for i in range(len(pose_data.objects)):
-            self.object_infos.append(pose_data.get_info(i))
-            self.source_meshes.append(pose_data.get_mesh(i))
-    
+        self.pose_data = pose_data
+        self.mesh_samples = mesh_samples
+
+        # Create Caches
+        NUM_CLASSES = len(pose_data.objects)
+        self.object_cache = [False] * NUM_CLASSES
+        self.object_infos = [None] * NUM_CLASSES
+        self.source_meshes = [None] * NUM_CLASSES
+
+        self.scene_cache = {}
+        self.scene_count = len(pose_data.keys())
+        self.rgbs = {}
+        self.depths = {}
+        self.labels = {}
+        self.back_projections = {}
+
+        self.length = 0
+        self.metas = {}
         self.object_ids = []
-        self.source_points = [] # From Models ; Baseline Objects
-        self.target_points = [] # Back Projected ; Off-Pose
-        self.target_poses = [] # Ground Truth Poses of Target Points
         self.keys = []
-        print("A")
         for i, key in enumerate(pose_data.keys()):
+            self.scene_cache[key] = False
+            self.metas[key] = self.pose_data[key]["meta"]
+            num_objects = len(self.metas[key]["object_names"])
 
-            l, s, v = key
+            self.object_ids += [None] * num_objects
+            self.keys += [None] * num_objects
+            self.length += num_objects
 
-            scene = pose_data[key]
+        self.point_cloud_cache = [False] * self.length
+        self.source_points = [None] * self.length # From Models ; Baseline Objects
+        self.target_points = [None] * self.length # Back Projected ; Off-Pose
+        self.target_poses = [None] * self.length # Ground Truth Poses of Target Points
 
-            rgb = scene["color"]()
-            depth = scene["depth"]()
-            label = scene["label"]()
-            meta = scene["meta"]
 
-            back_projection = back_project(depth, meta)
-
-            world_frames = [None] * 79
-
-            object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
-            print("B")
-            for object_id in object_ids:
-                
-                indices = np.where(label == object_id)
-                target_pcd = back_projection[indices]
-
-                print("C")
-
-                sample_count = len(target_pcd) if mesh_samples is None else mesh_samples
-                source_pcd, faces = trimesh.sample.sample_surface(self.source_meshes[object_id], sample_count)
-                
-                print("D")
-
-                try:
-                    target_pose = meta["poses_world"][object_id][:4, :] # 4x4 -> 3x4
-                except KeyError:
-                    target_pose = None
-
-                self.object_ids.append(object_id)
-                self.source_points.append(torch.tensor(source_pcd).float())
-                self.target_points.append(torch.tensor(target_pcd).float())
-                self.target_poses.append(torch.tensor(target_pose).float() if target_pose is not None else None)
-                self.keys.append((l, s, v))
-                
     def __len__(self):
         return len(self.source_points)
     
     def __getitem__(self, i):
 
         object_id = self.object_ids[i]
+        key = self.keys[i]
+        
+        self.cache_scene_data(key)
+        self.cache_point_clouds(i, object_id, key)
 
         extras = (
             object_id,
+            key, # scene key (level, scene, variant)
             self.object_infos[object_id], # info
             self.source_meshes[object_id], # mesh
-            self.keys[i], # scene key (level, scene, variant)
         )
 
         source_pcd = self.source_points[i]
@@ -296,3 +280,45 @@ class PoseDataset(torch.utils.data.Dataset):
         target_pose = self.target_poses[i]
 
         return source_pcd, target_pcd, target_pose, extras
+
+    def cache_scene_data(self, key):
+        if self.scene_cache[key] is not False:
+            return
+        self.scene_cache[key] = True
+        
+        scene = self.pose_data[key]
+        self.rgbs[key] = scene["color"]()
+        self.depths[key] = scene["depth"]()
+        self.labels[key] = scene["label"]()
+        self.back_projections[key] = back_project(self.depths[key], self.metas[key])
+
+    def cache_point_clouds(self, i, object_id, key):
+        if self.point_cloud_cache[i] is not False:
+            return
+        self.point_cloud_cache[i] = True
+        
+        indices = np.where(self.labels[key] == object_id)
+        target_pcd = self.back_projections[key][indices]
+
+        self.cache_model_data(i, object_id) 
+
+        sample_count = len(target_pcd) if self.mesh_samples is None else self.mesh_samples
+        source_pcd, faces = trimesh.sample.sample_surface(self.source_meshes[object_id], sample_count)
+
+        try:
+            target_pose = self.metas[i]["poses_world"][object_id][:4, :] # 4x4 -> 3x4
+        except KeyError:
+            target_pose = None
+        
+        self.source_points[i] = torch.tensor(source_pcd).float()
+        self.target_points[i] = torch.tensor(target_pcd).float()
+        self.target_poses[i] = target_pose if target_pose is not None else None
+                
+
+    def cache_model_data(self, object_id):
+        if self.object_cache[object_id] is not False:
+            return
+        self.object_cache[object_id] = True
+        
+        self.object_infos[object_id] = self.pose_data.get_info(object_id)
+        self.source_meshes[object_id] = self.pose_data.get_mesh(object_id)  
