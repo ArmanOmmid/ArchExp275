@@ -171,7 +171,6 @@ class XNetSwinTransformerDiffusion(_Network):
                 self.decoder.append(PatchExpandingV2_Modulated(2*dim, mod_dims=self.mod_dims, norm_layer=norm_layer)) # NOTE : Double input dim
 
             if self.residual_cross_attention:
-              print(dim, num_heads[i_stage])
               self.decoder.append(
                 SwinResidualCrossAttention_Modulated(window_size=window_size, embed_dim=dim, 
                                            num_heads=num_heads[i_stage], mod_dims=self.mod_dims, attention_dropout=attention_dropout,
