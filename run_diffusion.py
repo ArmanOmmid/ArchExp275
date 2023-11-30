@@ -158,19 +158,22 @@ def main(args):
     }
 
     # print(model_configs)
-    # summary(model, input_size=[1, input_channels, *input_size], depth=4)
+    model_summary = summary(model, input_size=[1, input_channels, *input_size], depth=4)
     # print(model)
     # print(args)
 
-    # MODEL_SUMMARY_PATH = os.path.join(experiment_dir, "torchinfo.txt")
-    # MODEL_PRINT_PATH = os.path.join(experiment_dir, "modules.txt")
-    # MODEL_CONFIGS_PATH = os.path.join(experiment_dir, "config.json")
-    # with open(MODEL_SUMMARY_PATH, "w") as f:
-    #     f.write(summary(model, input_size=[1, input_channels, *input_size], depth=4).__str__())
-    # with open(MODEL_PRINT_PATH, "w") as f:
-    #     f.write(model.__str__())
-    # with open(MODEL_CONFIGS_PATH, 'w') as f:
-    #     json.dump(model_configs, f, indent=4)
+    MODEL_SUMMARY_PATH = os.path.join(experiment_dir, "torchinfo.txt")
+    MODEL_PRINT_PATH = os.path.join(experiment_dir, "modules.txt")
+    MODEL_CONFIGS_PATH = os.path.join(experiment_dir, "config.json")
+    SCRIPT_ARGS_PATH = os.path.join(experiment_dir, "args.txt")
+    with open(MODEL_SUMMARY_PATH, "w") as f:
+        f.write(model_summary.__str__())
+    with open(MODEL_PRINT_PATH, "w") as f:
+        f.write(model.__str__())
+    with open(MODEL_CONFIGS_PATH, 'w') as f:
+        json.dump(model_configs, f, indent=4)
+    with open(SCRIPT_ARGS_PATH, 'w') as f:
+        f.write(args)
     
     ema = deepcopy(model).to(device)
     requires_grad(ema, False)
