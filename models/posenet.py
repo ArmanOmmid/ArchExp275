@@ -62,6 +62,9 @@ class PointNet(_Network):
             nn.Conv1d(3, 64, 1),
             nn.BatchNorm1d(64) if batch_norm else nn.Identity(),
             nn.LeakyReLU(),
+            nn.Conv1d(64, 64, 1),
+            nn.BatchNorm1d(64) if batch_norm else nn.Identity(),
+            nn.LeakyReLU(),
         )
 
         self.feature_tnet = TNet(64)
@@ -70,10 +73,15 @@ class PointNet(_Network):
             nn.Conv1d(64, 128, 1),
             nn.BatchNorm1d(128) if batch_norm else nn.Identity(),
             nn.LeakyReLU(),
+            nn.Conv1d(128, 256, 1),
+            nn.BatchNorm1d(256) if batch_norm else nn.Identity(),
+            nn.LeakyReLU(),
         )
 
         self.conv3 = nn.Sequential(
-            nn.Conv1d(128, 1024, 1),
+            nn.Conv1d(256, 512, 1),
+            nn.BatchNorm1d(512) if batch_norm else nn.Identity(),
+            nn.Conv1d(512, 1024, 1),
             nn.BatchNorm1d(1024) if batch_norm else nn.Identity(),
         )
 
@@ -122,7 +130,7 @@ class PointNet(_Network):
 
         return x
 
-class PointNet(_Network):
+class PoseNet(_Network):
     def __init__(self, batch_norm=False, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
@@ -131,6 +139,9 @@ class PointNet(_Network):
 
         DIMS = 1024 * 2
         self.fc = nn.Sequential(
+            nn.Linear(DIMS, DIMS),
+            nn.BatchNorm1d(DIMS) if batch_norm else nn.Identity(),
+            nn.LeakyReLU(),
             nn.Linear(DIMS, DIMS//2),
             nn.BatchNorm1d(DIMS//2) if batch_norm else nn.Identity(),
             nn.LeakyReLU(),
@@ -153,4 +164,8 @@ class PointNet(_Network):
 
         x = x.view(-1, 3, 4)
 
-        return x
+        x = self.pose(x)
+
+        x = x.view(-1, 3, 4)
+
+        return x      
