@@ -299,6 +299,7 @@ class PoseDataNPZ():
         scenes_path = os.path.join(npz_data_path, "scenes")
         self.data = {}
         for file in os.listdir(scenes_path):
+            print(file)
             key = tuple(int(i) for i in file.split(".")[0].split("-"))
             l, s, v = key
             scene_path = os.path.join(npz_data_path, "scenes", f"{l}-{s}-{v}.npz")
