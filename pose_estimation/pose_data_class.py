@@ -316,8 +316,9 @@ class PoseDataset(torch.utils.data.Dataset):
         self.cache_point_clouds(i, object_id, key)
 
         extras = (
+            i, # index
             object_id,
-            tuple(key), # scene key (level, scene, variant)
+            key, # scene key (level, scene, variant)
             self.object_infos[object_id], # info
             # self.source_meshes[object_id], # mesh
         )
