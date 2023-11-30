@@ -19,21 +19,10 @@ def back_project(depth, meta, world=True):
     return points
 
 
-def crop_image_using_segmentation(rgb_image, segmentation_map, expand_margin=5):
-    """
-    Crop the image using the segmentation map.
-
-    Parameters:
-    rgb_image (numpy.ndarray): The original RGB image.
-    segmentation_map (numpy.ndarray): The segmentation map (binary or multi-class).
-    expand_margin (int, optional): Margin to expand around the segmented object.
-
-    Returns:
-    numpy.ndarray: Cropped image.
-    """
+def crop_image_using_segmentation(rgb_image, indices, expand_margin=5):
 
     # Identify the object's coordinates from the segmentation map
-    rows, cols = np.where(segmentation_map > 0)
+    rows, cols = indices
     if not len(rows) or not len(cols):
         # Return the original image if no object is found in the segmentation map
         return rgb_image

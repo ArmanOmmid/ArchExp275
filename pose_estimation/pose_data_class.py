@@ -219,7 +219,6 @@ class PoseData:
             pose_data = self.txt_split(split)
         if levels is not None:
             pose_data = self.level_split(levels)
-        
 
         os.makedirs(dataset_folder)
         for i, key in enumerate(self.data.keys()):
@@ -232,14 +231,14 @@ class PoseData:
             depth = scene["depth"]()
             label = scene["label"]()
             meta = scene["meta"]
-            
             back_projection = back_project(depth, meta)
-
             world_frames = [None] * 79
 
             object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
 
             for j, object_id in enumerate(object_ids):
+
+                crop = crop_image_using_segmentation(rgb, indices)
 
                 data_string = f"{i+j}_{l}-{s}-{v}_{object_id}"
 
@@ -247,9 +246,9 @@ class PoseData:
                 os.makedirs(dataset_folder)
 
                 indices = np.where(label[key] == object_id)
-
                 target_pcd = back_projection[indices]
-                rgb = rgb[indices]
+
+                rgb_crop = crop_image_using_segmentation(rgb, indices)
 
 
 
@@ -348,17 +347,17 @@ class PoseDataset(torch.utils.data.Dataset):
         
         indices = np.where(self.labels[key] == object_id)
 
-        # False Register
-        if len(indices) == 0:
-            print(f"MisRegister: {key}-{object_id}")
-            self.keys.pop(i)
-            self.object_ids.pop(i)
-            self.point_cloud_cache.pop(i)
-            self.indices.pop(i)
-            self.source_points.pop(i)
-            self.target_points.pop(i)
-            self.target_poses.pop(i)
-            return # ?
+        # # False Register
+        # if len(indices) == 0:
+        #     print(f"MisRegister: {key}-{object_id}")
+        #     self.keys.pop(i)
+        #     self.object_ids.pop(i)
+        #     self.point_cloud_cache.pop(i)
+        #     self.indices.pop(i)
+        #     self.source_points.pop(i)
+        #     self.target_points.pop(i)
+        #     self.target_poses.pop(i)
+        #     return # ?
 
         self.indices[i] = indices
 
