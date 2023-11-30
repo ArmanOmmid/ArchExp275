@@ -212,7 +212,7 @@ class PoseData:
 
         return PoseData(self.data_path, self.models_path, split_processed_data=(self.objects, split_data, split_nested_data))
 
-    def create_organized_dataset_to_disk(self, dataset_folder, levels=None, split=None):
+    def create_organized_dataset_to_disk(self, dataset_folder, levels=None, split=None, mesh_samples=None):
         
         pose_data = self
         if split is not None:
@@ -220,36 +220,67 @@ class PoseData:
         if levels is not None:
             pose_data = self.level_split(levels)
 
+        NUM_CLASSES = len(pose_data.objects)
+        object_infos = [None] * NUM_CLASSES
+        source_meshes = [None] * NUM_CLASSES
+        for i in range(NUM_CLASSES):
+            object_infos[i] = pose_data.get_info(i)
+            source_meshes[i] = pose_data.get_mesh(i)
+
+        np.savez(os.path.join(dataset_folder, f"objects.npz"), 
+                    infos=object_infos, 
+                    meshes=source_meshes)
+        
+        scene_data = os.path.join(dataset_folder, "scenes")
         os.makedirs(dataset_folder)
+        os.makedirs(scene_data)
         for i, key in enumerate(self.data.keys()):
 
             l, s, v = key
 
             scene = pose_data.data[key]
 
-            rgb = scene["color"]()
+            color = scene["color"]()
             depth = scene["depth"]()
             label = scene["label"]()
             meta = scene["meta"]
-            back_projection = back_project(depth, meta)
-            world_frames = [None] * 79
+            projection = back_project(depth, meta)
 
-            object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
+            np.savez(os.path.join(scene_data, f"{l}-{s}-{v}.npz"), 
+                     color=color, 
+                     depth=depth,
+                     label=label,
+                     meta=meta,
+                     projection=projection)
+            
 
-            for j, object_id in enumerate(object_ids):
+            # object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
 
-                crop = crop_image_using_segmentation(rgb, indices)
+            # for j, object_id in enumerate(object_ids):
 
-                data_string = f"{i+j}_{l}-{s}-{v}_{object_id}"
+            #     data_string = f"{i+j}_{l}-{s}-{v}_{object_id}"
 
-                data_path = os.path.join(dataset_folder, data_string)
-                os.makedirs(dataset_folder)
+            #     datum_path = os.path.join(dataset_folder, data_string)
+            #     os.makedirs(datum_path)
 
-                indices = np.where(label[key] == object_id)
-                target_pcd = back_projection[indices]
+            #     indices = np.where(label[key] == object_id)
+            #     target_pcd = back_projection[indices]
 
-                rgb_crop = crop_image_using_segmentation(rgb, indices)
+            #     sample_count = len(target_pcd) if mesh_samples is None else mesh_samples
+            #     source_pcd, faces = trimesh.sample.sample_surface(self.source_meshes[object_id], sample_count)
+            #     source_pcd = source_pcd * self.metas[key]["scales"][object_id]
+            #     # target_pcd  = target_pcd / self.metas[key]["scales"][object_id]
 
+            #     rgb_crop = crop_image_using_segmentation(rgb, indices)
+
+            #     try:
+            #         target_pose = self.metas[key]["poses_world"][object_id][:3, :] # 4x4 -> 3x4
+            #     except KeyError:
+            #         target_pose = 0 # No Pose Provided; torch batching doens't allow None
+
+            #     data_components = [
+
+            #     ]
 
 
 
@@ -359,7 +390,7 @@ class PoseDataset(torch.utils.data.Dataset):
 
         sample_count = len(target_pcd) if self.mesh_samples is None else self.mesh_samples
         source_pcd, faces = trimesh.sample.sample_surface(self.source_meshes[object_id], sample_count)
-        source_pcd * self.metas[key]["scales"][object_id]
+        source_pcd = source_pcd * self.metas[key]["scales"][object_id]
 
         try:
             target_pose = self.metas[key]["poses_world"][object_id][:3, :] # 4x4 -> 3x4
