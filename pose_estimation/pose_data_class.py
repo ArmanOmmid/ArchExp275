@@ -246,7 +246,7 @@ class PoseDataset(torch.utils.data.Dataset):
         self.metas = {}
         self.keys = []
         self.object_ids = []
-        for i, key in enumerate(pose_data.keys()):
+        for i, key in enumerate(self.pose_data.keys()):
             self.scene_cache[key] = False
             self.metas[key] = self.pose_data[key]["meta"]
             objects = self.metas[key]["object_names"]
