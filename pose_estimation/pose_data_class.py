@@ -84,7 +84,7 @@ class PoseData:
         return objects
 
     def get_mesh(self, object_id):
-        if self.object_cache is not None:
+        if isinstance(self.object_cache, np.ndarray):
             return self.object_cache[f"{object_id}"].item()
         object_info = self.objects[object_id]
         location = object_info["location"].split("/")[-1]
