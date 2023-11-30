@@ -313,7 +313,7 @@ class PoseDataset(torch.utils.data.Dataset):
         key = self.keys[i]
         
         self.cache_scene_data(key)
-        object_id = self.cache_point_clouds(i, object_id, key) # Incase it didn't exist
+        self.cache_point_clouds(i, object_id, key)
 
         extras = (
             i, # index
@@ -349,18 +349,7 @@ class PoseDataset(torch.utils.data.Dataset):
 
         # False Register
         if len(indices[0]) == 0:
-            print(f"MisRegister: {key}-{object_id}")
-            self.keys.pop(i)
-            self.object_ids.pop(i)
-            self.point_cloud_cache.pop(i)
-            self.indices.pop(i)
-            self.source_points.pop(i)
-            self.target_points.pop(i)
-            self.target_poses.pop(i)
-
-            # Skip to the next item
-            object_id = self.object_ids[i]
-            indices = np.where(self.labels[key] == object_id)
+            print(f"MisRegister: {key} : {object_id}")
 
         self.indices[i] = indices
 
@@ -381,8 +370,6 @@ class PoseDataset(torch.utils.data.Dataset):
         self.target_points[i] = torch.tensor(target_pcd).float()
         self.target_poses[i] = target_pose if target_pose is not 0 else 0
 
-        return object_id
-                
 
     def cache_model_data(self, object_id):
         if self.object_cache[object_id] is not False:
