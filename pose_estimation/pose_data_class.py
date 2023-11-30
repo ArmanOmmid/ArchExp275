@@ -225,7 +225,7 @@ class PoseDataset(torch.utils.data.Dataset):
         self.object_infos = []
         self.source_meshes = []
         for i in range(len(pose_data.objects)):
-            self.object_info.append(pose_data.get_info(i))
+            self.object_infos.append(pose_data.get_info(i))
             self.source_meshes.append(pose_data.get_mesh(i))
     
         self.object_ids = []
