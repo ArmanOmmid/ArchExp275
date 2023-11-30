@@ -1,4 +1,5 @@
 import os
+import shutil
 import pickle
 import numpy as np
 from PIL import Image
@@ -50,18 +51,29 @@ class PoseData:
     CSV_FILENAME = "objects_v1.csv"
     DATA_FOLDERNAME = "v2.2"
 
-    def __init__(self, data_path, models_path, split_processed_data=None) -> None:
+    def __init__(self, data_path, models_path, object_cache=True, split_processed_data=None) -> None:
 
         self.data_path = data_path
         self.models_path = models_path
 
         if split_processed_data is not None:
-            self.objects, self.data, self.nested_data = split_processed_data
+            self.objects, self.data, self.nested_data, self.object_cache = split_processed_data
         else:
             self.objects = self.organize_objects(os.path.join(data_path, self.CSV_FILENAME))
             self.data, self.nested_data = self.organize_data(os.path.join(data_path, self.DATA_FOLDERNAME))
 
         self.keylist = list(self.data.keys())
+
+        self.object_cache = object_cache
+        self.object_cache_path = os.path.join(self.models_path, "objects.npz")
+        if self.object_cache not in [False, None]:
+            if self.object_cache is True: # We may have gotten it from a split
+                if not os.path.exists(self.object_cache_path):
+                    self.make_object_cache()
+                else:
+                    self.object_cache = np.load(self.object_cache_path, allow_pickle=True)
+        else:
+            self.object_cache = None
 
     def organize_objects(self, objects_path):
         object_lists = np.genfromtxt(objects_path, delimiter=',', skip_header=1, dtype=None, encoding="utf-8")
@@ -72,6 +84,8 @@ class PoseData:
         return objects
 
     def get_mesh(self, object_id):
+        if self.object_cache is not None:
+            return self.object_cache[f"{object_id}"].item()
         object_info = self.objects[object_id]
         location = object_info["location"].split("/")[-1]
         visual_dae_path = os.path.join(self.models_path, location, "visual_meshes", "visual.dae")
@@ -80,6 +94,15 @@ class PoseData:
 
     def get_info(self, object_id):
         return self.objects[object_id]
+    
+    def make_object_cache(self):
+        object_infos = []
+        object_meshes = {}
+        for i in range(len(self.objects)):
+            object_infos.append(self.get_info(i))
+            object_meshes[f"{i}"] = self.get_mesh(i)
+        np.savez(os.path.join(self.object_cache_path), **object_meshes, info=np.array(object_infos))
+        self.object_cache = np.load(self.object_cache_path, allow_pickle=True)
 
     def organize_data(self, data_path):
         data = {}
@@ -115,9 +138,10 @@ class PoseData:
                     entry = pickle.load(f)
             else:
                 # Normlize condition
-                normalizer = 255 if component == "color" \
-                        else 1000 if component == "depth" \
-                        else None
+                normalizer = None
+                # normalizer = 255 if component == "color" \
+                #         else 1000 if component == "depth" \
+                #         else normalizer
                 # Closure over variable
                 def closure(filepath, normalizer):
                     # Generate PNG
@@ -182,7 +206,7 @@ class PoseData:
             if variant not in split_nested_data[level][scene]:
                 split_nested_data[level][scene][variant] = self.data[key]
 
-        return PoseData(self.data_path, self.models_path, split_processed_data=(self.objects, split_data, split_nested_data))
+        return PoseData(self.data_path, self.models_path, split_processed_data=(self.objects, split_data, split_nested_data, self.object_cache))
 
     def txt_split(self, split_txt_path):
 
@@ -210,7 +234,7 @@ class PoseData:
             if variant not in split_nested_data[level][scene]:
                 split_nested_data[level][scene][variant] = self.data[key]
 
-        return PoseData(self.data_path, self.models_path, split_processed_data=(self.objects, split_data, split_nested_data))
+        return PoseData(self.data_path, self.models_path, split_processed_data=(self.objects, split_data, split_nested_data, self.object_cache))
 
     def create_organized_dataset_to_disk(self, dataset_folder, levels=None, split=None, mesh_samples=None):
         
@@ -220,32 +244,34 @@ class PoseData:
         if levels is not None:
             pose_data = self.level_split(levels)
 
-        NUM_CLASSES = len(pose_data.objects)
-        object_infos = []
-        object_meshes = {}
-
-        print("Objects")
-        for i in range(NUM_CLASSES):
-            object_infos.append(pose_data.get_info(i))
-            object_meshes[f"{i}"] = pose_data.get_mesh(i)
-
         os.makedirs(dataset_folder)
-        np.savez(os.path.join(dataset_folder, f"meshes.npz"), **object_meshes, info=np.array(object_infos))
+
+        shutil.copy(self.object_cache_path, os.path.join(dataset_folder, "objects.npz"))
         
         print("Scenes")
-        scene_data = os.path.join(dataset_folder, "scenes")
-        os.makedirs(scene_data)
+        scene_path = os.path.join(dataset_folder, "scenes")
+        os.makedirs(scene_path)
+        length = len(list(self.data.keys()))
         for i, key in enumerate(self.data.keys()):
 
             l, s, v = key
 
             scene = pose_data.data[key]
 
-            color = scene["color"]()
-            depth = scene["depth"]()
+            color = scene["color"]() # normalization 255
+            depth = scene["depth"]() # normalization 1000
             label = scene["label"]()
             meta = scene["meta"]
             projection = back_project(depth, meta)
+
+            scene_path_i = os.path.join(scene_path, f"{l}-{s}-{v}")
+
+            np.savez(scene_path, color=color, depth=depth, label=label, meta=meta, projection=projection)
+
+            assert 0
+
+            # if i % 100 == 0 :
+            #     print(f"{i} / {length}")
             
 
             # object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
@@ -391,7 +417,7 @@ class PoseDataset(torch.utils.data.Dataset):
         
         self.source_points[i] = torch.tensor(source_pcd).float()
         self.target_points[i] = torch.tensor(target_pcd).float()
-        self.target_poses[i] = target_pose if target_pose is not 0 else 0
+        self.target_poses[i] = target_pose if target_pose != 0 else 0
 
 
     def cache_model_data(self, object_id):
