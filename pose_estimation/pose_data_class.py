@@ -214,13 +214,16 @@ class PoseData:
 
 class PoseDataset(torch.utils.data.Dataset):
     def __init__(self, data_path, models_path, levels=None, split=None, mesh_samples=None):
-
+        
+        print("X")
         pose_data = PoseData(data_path, models_path)
 
+        print("Y")
         if split is not None:
             pose_data = pose_data.txt_split(split)
         if levels is not None:
             pose_data = pose_data.level_split(levels)
+        print("Z")
 
         self.object_infos = []
         self.source_meshes = []
@@ -233,6 +236,7 @@ class PoseDataset(torch.utils.data.Dataset):
         self.target_points = [] # Back Projected ; Off-Pose
         self.target_poses = [] # Ground Truth Poses of Target Points
         self.keys = []
+        print("A")
         for i, key in enumerate(pose_data.keys()):
 
             l, s, v = key
@@ -249,14 +253,18 @@ class PoseDataset(torch.utils.data.Dataset):
             world_frames = [None] * 79
 
             object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
-
+            print("B")
             for object_id in object_ids:
                 
                 indices = np.where(label == object_id)
                 target_pcd = back_projection[indices]
 
+                print("C")
+
                 sample_count = len(target_pcd) if mesh_samples is None else mesh_samples
                 source_pcd, faces = trimesh.sample.sample_surface(self.source_meshes[object_id], sample_count)
+                
+                print("D")
 
                 try:
                     target_pose = meta["poses_world"][object_id][:4, :] # 4x4 -> 3x4
