@@ -150,7 +150,7 @@ class PoseNet(_Network):
             nn.LeakyReLU(),
         )
 
-        self.pose = nn.Linear(256, 12)
+        self.pose = nn.Linear(DIMS//4, 12)
     
     def forward(self, s, t):
 
