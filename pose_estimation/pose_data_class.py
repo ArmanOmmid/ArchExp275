@@ -5,6 +5,10 @@ from PIL import Image
 import trimesh
 from matplotlib.pyplot import get_cmap
 
+import torch
+
+from .utils import back_project
+
 NUM_OBJECTS = 79
 cmap = get_cmap('rainbow', NUM_OBJECTS)
 COLOR_PALETTE = np.array([cmap(i)[:3] for i in range(NUM_OBJECTS + 3)])
@@ -155,14 +159,18 @@ class PoseData:
             value = value[i]
         return value
 
-    def level_split(self, selected_level):
+    def level_split(self, selected_levels):
+        
+        if not isinstance(selected_levels, (tuple, list)):
+            selected_levels = [selected_levels]
+
         # Create splits
         split_data = {}
         split_nested_data = {}
         for key in self.data.keys():
             level, scene, variant = key
 
-            if level != selected_level:
+            if level not in selected_levels:
                 continue
 
             split_data[key] = self.data[key]
@@ -203,3 +211,80 @@ class PoseData:
                 split_nested_data[level][scene][variant] = self.data[key]
 
         return PoseData(self.data_path, self.models_path, split_processed_data=(self.objects, split_data, split_nested_data))
+
+class PoseDataset(torch.utils.data.Dataset):
+    def __init__(self, data_path, models_path, levels=None, split=None, mesh_samples=None):
+
+        pose_data = PoseData(data_path, models_path)
+
+        if split is not None:
+            pose_data = pose_data.txt_split(split)
+        if levels is not None:
+            pose_data = pose_data.level_split(levels)
+
+        self.object_infos = []
+        self.source_meshes = []
+        for i in range(len(pose_data.objects)):
+            self.object_info.append(pose_data.get_info(i))
+            self.source_meshes.append(pose_data.get_mesh(i))
+    
+        self.object_ids = []
+        self.source_points = [] # From Models ; Baseline Objects
+        self.target_points = [] # Back Projected ; Off-Pose
+        self.target_poses = [] # Ground Truth Poses of Target Points
+        self.keys = []
+        for i, key in enumerate(pose_data.keys()):
+
+            l, s, v = key
+
+            scene = pose_data[key]
+
+            rgb = scene["color"]()
+            depth = scene["depth"]()
+            label = scene["label"]()
+            meta = scene["meta"]
+
+            back_projection = back_project(depth, meta)
+
+            world_frames = [None] * 79
+
+            object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
+
+            for object_id in object_ids:
+                
+                indices = np.where(label == object_id)
+                target_pcd = back_projection[indices]
+
+                sample_count = len(target_pcd) if mesh_samples is None else mesh_samples
+                source_pcd, faces = trimesh.sample.sample_surface(self.source_meshes[object_id], sample_count)
+
+                try:
+                    target_pose = meta["poses_world"][object_id][:4, :] # 4x4 -> 3x4
+                except KeyError:
+                    target_pose = None
+
+                self.object_ids.append(object_id)
+                self.source_points.append(torch.tensor(source_pcd).float())
+                self.target_points.append(torch.tensor(target_pcd).float())
+                self.target_poses.append(torch.tensor(target_pose).float() if target_pose is not None else None)
+                self.keys.append((l, s, v))
+                
+    def __len__(self):
+        return len(self.source_points)
+    
+    def __getitem__(self, i):
+
+        object_id = self.object_ids[i]
+
+        extras = (
+            object_id,
+            self.object_infos[object_id], # info
+            self.source_meshes[object_id], # mesh
+            self.keys[i], # scene key (level, scene, variant)
+        )
+
+        source_pcd = self.source_points[i]
+        target_pcd = self.target_points[i]
+        target_pose = self.target_poses[i]
+
+        return source_pcd, target_pcd, target_pose, extras
