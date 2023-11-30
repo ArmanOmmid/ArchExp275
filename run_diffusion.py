@@ -119,7 +119,7 @@ def main(args):
     patch_size = [1, 1]
     embed_dim = 192
     depths = [3, 3]
-    num_heads = [6, 12, 124]
+    num_heads = [6, 12, 24]
     window_size = [2, 2]
     num_classes = 101
 
