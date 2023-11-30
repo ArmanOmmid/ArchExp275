@@ -282,6 +282,7 @@ class PoseDataNPZ():
         self.keylist = list(self.pose_data.keys())
 
         self.objects = np.load(os.path.join(npz_data_path, "objects.npz"), allow_pickle=True)
+        self.info = self.objects["info"]
 
         self.data = {}
         for key in self.keylist:
@@ -294,7 +295,6 @@ class PoseDataNPZ():
         self.npz_data_path = npz_data_path
         if os.path.exists(self.npz_data_path):
             print(f"Folder Already Exists: {self.npz_data_path}")
-            print("Rerun .npz(npz_dataset_path) ")
             return
         self.pose_data.npz(self.npz_data_path)
 
@@ -315,6 +315,12 @@ class PoseDataNPZ():
             return self.data[self.keylist[i]] # if you give an int
         else:
             return self.data[i] # if you give a key tuple (l, s, v)
+        
+    def get_mesh(self, i):
+        return self.objects[f"{i}"]
+
+    def get_info(self, i):
+        return self.info[i]
 
 
 class PoseDataset(torch.utils.data.Dataset):
