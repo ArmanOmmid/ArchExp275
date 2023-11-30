@@ -313,7 +313,7 @@ class PoseDataset(torch.utils.data.Dataset):
         key = self.keys[i]
         
         self.cache_scene_data(key)
-        self.cache_point_clouds(i, object_id, key)
+        object_id, key = self.cache_point_clouds(i, object_id, key) # Incase it didn't exist
 
         extras = (
             i, # index
@@ -358,8 +358,8 @@ class PoseDataset(torch.utils.data.Dataset):
             self.target_points.pop(i)
             self.target_poses.pop(i)
 
+            # Skip to the next item
             object_id = self.object_ids[i]
-            key = self.keys[i]
             indices = np.where(self.labels[key] == object_id)
 
         self.indices[i] = indices
@@ -380,6 +380,8 @@ class PoseDataset(torch.utils.data.Dataset):
         self.source_points[i] = torch.tensor(source_pcd).float()
         self.target_points[i] = torch.tensor(target_pcd).float()
         self.target_poses[i] = target_pose if target_pose is not 0 else 0
+
+        return object_id
                 
 
     def cache_model_data(self, object_id):
