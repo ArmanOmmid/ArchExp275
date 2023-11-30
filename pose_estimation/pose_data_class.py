@@ -7,7 +7,7 @@ from matplotlib.pyplot import get_cmap
 
 import torch
 
-from .utils import back_project
+from .utils import back_project, crop_image_using_segmentation
 
 NUM_OBJECTS = 79
 cmap = get_cmap('rainbow', NUM_OBJECTS)
@@ -212,6 +212,48 @@ class PoseData:
 
         return PoseData(self.data_path, self.models_path, split_processed_data=(self.objects, split_data, split_nested_data))
 
+    def create_organized_dataset_to_disk(self, dataset_folder, levels=None, split=None):
+        
+        pose_data = self
+        if split is not None:
+            pose_data = self.txt_split(split)
+        if levels is not None:
+            pose_data = self.level_split(levels)
+        
+
+        os.makedirs(dataset_folder)
+        for i, key in enumerate(self.data.keys()):
+
+            l, s, v = key
+
+            scene = pose_data.data[key]
+
+            rgb = scene["color"]()
+            depth = scene["depth"]()
+            label = scene["label"]()
+            meta = scene["meta"]
+            
+            back_projection = back_project(depth, meta)
+
+            world_frames = [None] * 79
+
+            object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
+
+            for j, object_id in enumerate(object_ids):
+
+                data_string = f"{i+j}_{l}-{s}-{v}_{object_id}"
+
+                data_path = os.path.join(dataset_folder, data_string)
+                os.makedirs(dataset_folder)
+
+                indices = np.where(label[key] == object_id)
+
+                target_pcd = back_projection[indices]
+                rgb = rgb[indices]
+
+
+
+
 class PoseDataset(torch.utils.data.Dataset):
     def __init__(self, data_path, models_path, levels=None, split=None, mesh_samples=None):
         
@@ -275,7 +317,7 @@ class PoseDataset(torch.utils.data.Dataset):
 
         extras = (
             object_id,
-            key, # scene key (level, scene, variant)
+            tuple(key), # scene key (level, scene, variant)
             self.object_infos[object_id], # info
             # self.source_meshes[object_id], # mesh
         )

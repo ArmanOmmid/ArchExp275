@@ -18,6 +18,35 @@ def back_project(depth, meta, world=True):
         points = (points - T_extrinsic) @ R_extrinsic
     return points
 
+
+def crop_image_using_segmentation(rgb_image, segmentation_map, expand_margin=5):
+    """
+    Crop the image using the segmentation map.
+
+    Parameters:
+    rgb_image (numpy.ndarray): The original RGB image.
+    segmentation_map (numpy.ndarray): The segmentation map (binary or multi-class).
+    expand_margin (int, optional): Margin to expand around the segmented object.
+
+    Returns:
+    numpy.ndarray: Cropped image.
+    """
+
+    # Identify the object's coordinates from the segmentation map
+    rows, cols = np.where(segmentation_map > 0)
+    if not len(rows) or not len(cols):
+        # Return the original image if no object is found in the segmentation map
+        return rgb_image
+
+    # Determine the bounding box
+    min_row, max_row = max(rows.min() - expand_margin, 0), min(rows.max() + expand_margin, rgb_image.shape[0])
+    min_col, max_col = max(cols.min() - expand_margin, 0), min(cols.max() + expand_margin, rgb_image.shape[1])
+
+    # Crop the image
+    cropped_image = rgb_image[min_row:max_row, min_col:max_col]
+
+    return cropped_image
+
 def show_points(points):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, projection='3d')
