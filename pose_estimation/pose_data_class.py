@@ -263,7 +263,7 @@ class PoseDataset(torch.utils.data.Dataset):
 
 
     def __len__(self):
-        return self.length
+        return len(self.object_ids)
     
     def __getitem__(self, i):
 
