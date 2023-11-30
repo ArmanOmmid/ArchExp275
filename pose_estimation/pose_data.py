@@ -299,9 +299,12 @@ class PoseDataNPZ():
         scenes_path = os.path.join(npz_data_path, "scenes")
         self.data = {}
         for file in os.listdir(scenes_path):
-            print(file)
             key = tuple(int(i) for i in file.split(".")[0].split("-"))
             l, s, v = key
+            if levels is not None:
+                levels = [levels] if isinstance(levels, int) else levels
+            if l not in levels:
+                continue
             scene_path = os.path.join(npz_data_path, "scenes", f"{l}-{s}-{v}.npz")
             self.data[key] = np.load(scene_path, allow_pickle=True) # NPZ Generator object 
             # color, depth, label, meta
