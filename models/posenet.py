@@ -164,8 +164,4 @@ class PoseNet(_Network):
 
         x = x.view(-1, 3, 4)
 
-        x = self.pose(x)
-
-        x = x.view(-1, 3, 4)
-
         return x      
