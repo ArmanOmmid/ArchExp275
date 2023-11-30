@@ -7,30 +7,30 @@ from ._network import _Network
 from .modules import LambdaModule
 
 class TNet(nn.Module):
-    def __init__(self, k=3, *args, **kwargs) -> None:
+    def __init__(self, k=3, batch_norm=False, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self. k = k
         self.permute = Permute([0, 2, 1])
         self.conv = nn.Sequential(
             nn.Conv1d(k, 64, 1),
-            nn.BatchNorm1d(64),
+            nn.BatchNorm1d(64) if batch_norm else nn.Identity(),
             nn.LeakyReLU(),
             nn.Conv1d(64, 128, 1),
-            nn.BatchNorm1d(128),
+            nn.BatchNorm1d(128) if batch_norm else nn.Identity(),
             nn.LeakyReLU(),
             nn.Conv1d(128 ,1024, 1),
-            nn.BatchNorm1d(1024),
+            nn.BatchNorm1d(1024) if batch_norm else nn.Identity(),
             nn.LeakyReLU(),
         )
         # agnostic to number of points
         self.maxpool = LambdaModule(lambda x: torch.max(x, 2, keepdim=True)[0])
         self.fc = nn.Sequential(
             nn.Linear(1024, 512),
-            nn.BatchNorm1d(512),
+            nn.BatchNorm1d(512) if batch_norm else nn.Identity(),
             nn.LeakyReLU(),
             nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
+            nn.BatchNorm1d(256) if batch_norm else nn.Identity(),
             nn.LeakyReLU(),
         )
         self.pose = nn.Linear(256, k*k)
@@ -51,7 +51,7 @@ class TNet(nn.Module):
         return x
 
 class PointNet(_Network):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, batch_norm=False, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self.permute = Permute([0, 2, 1])
@@ -60,7 +60,7 @@ class PointNet(_Network):
 
         self.conv1 = nn.Sequential(
             nn.Conv1d(3, 64, 1),
-            nn.BatchNorm1d(64),
+            nn.BatchNorm1d(64) if batch_norm else nn.Identity(),
             nn.LeakyReLU(),
         )
 
@@ -68,23 +68,23 @@ class PointNet(_Network):
 
         self.conv2 = nn.Sequential(
             nn.Conv1d(64, 128, 1),
-            nn.BatchNorm1d(128),
+            nn.BatchNorm1d(128) if batch_norm else nn.Identity(),
             nn.LeakyReLU(),
         )
 
         self.conv3 = nn.Sequential(
             nn.Conv1d(128, 1024, 1),
-            nn.BatchNorm1d(1024),
+            nn.BatchNorm1d(1024) if batch_norm else nn.Identity(),
         )
 
         self.maxpool = LambdaModule(lambda x: torch.max(x, 2, keepdim=True)[0])
 
         self.fc = nn.Sequential(
             nn.Linear(1024, 512),
-            nn.BatchNorm1d(512),
+            nn.BatchNorm1d(512) if batch_norm else nn.Identity(),
             nn.LeakyReLU(),
             nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
+            nn.BatchNorm1d(256) if batch_norm else nn.Identity(),
             nn.LeakyReLU(),
         )
 
