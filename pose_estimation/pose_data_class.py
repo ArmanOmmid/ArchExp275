@@ -277,23 +277,21 @@ class PoseDataNPZ():
         self.pose_data = PoseData(data_path, models_path)
         self.npz_data_path = npz_data_path
 
-        keys = pose_data.keys()
+        self.npz(npz_data_path)
 
-        if not os.path.exists(npz_data_path):
-            pose_data.npz(npz_data_path)
-        else:
-            print(f"{npz_data_path} - Already Exists")
+        self.keylist = list(self.pose_data.keys())
 
         self.objects = np.load(os.path.join(npz_data_path, "objects.npz"), allow_pickle=True)
 
         self.data = {}
-        for key in keys:
+        for key in self.keylist:
             l, s, v = key
             scene_path = os.path.join(npz_data_path, "scenes", f"{l}-{s}-{v}.npz")
-            self.data[keys] = np.load(scene_path, allow_pickle=True) # NPZ Generator object 
+            self.data[key] = np.load(scene_path, allow_pickle=True) # NPZ Generator object 
             # color, depth, label, meta
 
-    def npz(self):
+    def npz(self, npz_data_path):
+        self.npz_data_path = npz_data_path
         if os.path.exists(self.npz_data_path):
             print(f"Folder Already Exists: {self.npz_data_path}")
             print("Rerun .npz(npz_dataset_path) ")
@@ -312,19 +310,11 @@ class PoseDataNPZ():
     def __len__(self):
         return len(self.keylist)
 
-    def __call__(self, idx):
-        # Get from global, flattened index
-        return self.data[self.keylist[idx]]
-
-    def __getitem__(self, indices):
-        if isinstance(indices, int):
-            indices = (1,)
-        if len(indices) == 3:
-            return self.data[indices]
-        value = self.nested_data
-        for i in indices:
-            value = value[i]
-        return value
+    def __getitem__(self, i):
+        if isinstance(i, int):
+            return self.data[self.keylist[i]] # if you give an int
+        else:
+            return self.data[i] # if you give a key tuple (l, s, v)
 
 
 class PoseDataset(torch.utils.data.Dataset):
