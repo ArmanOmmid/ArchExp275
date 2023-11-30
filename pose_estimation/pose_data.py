@@ -274,14 +274,17 @@ class PoseData:
         return self.data.keys()
 
 class PoseDataNPZ():
-    def __init__(self, data_path, models_path, npz_data_path, levels=None, split=None, make_object_cache=False) -> None:
+    def __init__(self, npz_data_path, data_path=None, models_path=None, levels=None, split=None, make_object_cache=False) -> None:
         
-        self.pose_data = PoseData(data_path, models_path, make_object_cache=make_object_cache)
         self.npz_data_path = npz_data_path
+        if data_path is not None and models_path is not None:
+            self.pose_data = PoseData(data_path, models_path, make_object_cache=make_object_cache)
+        else:
+            assert os.path.exists(self.npz_data_path)
+            print(f"Presumed Preloaded NPZ Dataset: {npz_data_path}")
+            # NOTE : You cannot INTERNALLY do levels or splits this way
 
         self.npz(npz_data_path)
-
-        self.keylist = list(self.pose_data.keys())
         
         self.objects_npz_path = os.path.join(npz_data_path, "objects.npz")
         if os.path.exists(self.objects_npz_path):
@@ -293,12 +296,16 @@ class PoseDataNPZ():
 
         self.object_RAM_cache = [None] * len(self.info)
 
+        scenes_path = os.path.join(npz_data_path, "scenes")
         self.data = {}
-        for key in self.keylist:
+        for file in os.listdir(scenes_path):
+            key = tuple(int(i) for i in file.split(".")[0].split("-"))
             l, s, v = key
             scene_path = os.path.join(npz_data_path, "scenes", f"{l}-{s}-{v}.npz")
             self.data[key] = np.load(scene_path, allow_pickle=True) # NPZ Generator object 
             # color, depth, label, meta
+
+        self.keylist = list(self.data.keys())
 
     def npz(self, npz_data_path):
         self.npz_data_path = npz_data_path
