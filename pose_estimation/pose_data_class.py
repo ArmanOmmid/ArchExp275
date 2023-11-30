@@ -303,6 +303,16 @@ class PoseDataset(torch.utils.data.Dataset):
         self.point_cloud_cache[i] = True
         
         indices = np.where(self.labels[key] == object_id)
+
+        # False Register
+        if len(indices) == 0:
+            self.keys.pop(i)
+            self.object_ids.pop(i)
+            self.point_cloud_cache.pop(i)
+            self.source_points.pop(i)
+            self.target_points.pop(i)
+            self.target_poses.pop(i)
+
         target_pcd = self.back_projections[key][indices]
 
         self.cache_model_data(object_id) 
