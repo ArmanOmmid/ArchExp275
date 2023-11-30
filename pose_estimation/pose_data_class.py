@@ -273,16 +273,16 @@ class PoseData:
 
         return self.data.keys()
 
-class PoseDataNPZ():
-    def __init__(self, data_path, models_path, npz_data_path, levels=None, split=None) -> None:
+# class PoseDataNPZ():
+#     def __init__(self, data_path, models_path, npz_data_path, levels=None, split=None) -> None:
         
-        pose_data = PoseData(data_path, models_path)
+#         pose_data = PoseData(data_path, models_path)
         
-        if os.path.exists(npz_data_path):
-            keys = 
-        else:
+#         if os.path.exists(npz_data_path):
+#             keys = 
+#         else:
 
-            .npz(npz_data_path)
+#             .npz(npz_data_path)
 
 
 
