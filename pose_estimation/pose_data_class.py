@@ -221,22 +221,19 @@ class PoseData:
             pose_data = self.level_split(levels)
 
         NUM_CLASSES = len(pose_data.objects)
-        object_infos = [None] * NUM_CLASSES
-        object_meshes = [None] * NUM_CLASSES
+        object_infos = []
+        object_meshes = {}
 
-        mesh_path = os.path.join(dataset_folder, "meshes")
-        os.makedirs(mesh_path)
+        print("Objects")
         for i in range(NUM_CLASSES):
-            object_infos[i] = pose_data.get_info(i)
-            mesh_path_i = os.path.join(mesh_path, f'{i}.obj')
+            object_infos.append(pose_data.get_info(i))
+            object_meshes[f"{i}"] = pose_data.get_mesh(i)
 
-            # mesh_i = pose_data.get_mesh(i)
-            # # mesh_i.export(file_obj=mesh_path_i, file_type='obj')
-
-        np.save(os.path.join(dataset_folder, f"objects.npy"),  np.array(object_infos))
-        
-        scene_data = os.path.join(dataset_folder, "scenes")
         os.makedirs(dataset_folder)
+        np.savez(os.path.join(dataset_folder, f"meshes.npz"), **object_meshes, info=np.array(object_infos))
+        
+        print("Scenes")
+        scene_data = os.path.join(dataset_folder, "scenes")
         os.makedirs(scene_data)
         for i, key in enumerate(self.data.keys()):
 
@@ -249,13 +246,6 @@ class PoseData:
             label = scene["label"]()
             meta = scene["meta"]
             projection = back_project(depth, meta)
-
-            np.savez(os.path.join(scene_data, f"{l}-{s}-{v}.npz"), 
-                     color=color, 
-                     depth=depth,
-                     label=label,
-                     meta=meta,
-                     projection=projection)
             
 
             # object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
@@ -285,8 +275,6 @@ class PoseData:
             #     data_components = [
 
             #     ]
-
-
 
 class PoseDataset(torch.utils.data.Dataset):
     def __init__(self, data_path, models_path, levels=None, split=None, mesh_samples=None):
