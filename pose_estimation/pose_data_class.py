@@ -277,7 +277,7 @@ class PoseDataset(torch.utils.data.Dataset):
             object_id,
             key, # scene key (level, scene, variant)
             self.object_infos[object_id], # info
-            self.source_meshes[object_id], # mesh
+            # self.source_meshes[object_id], # mesh
         )
 
         source_pcd = self.source_points[i]
@@ -314,13 +314,13 @@ class PoseDataset(torch.utils.data.Dataset):
         source_pcd * self.metas[key]["scales"][object_id]
 
         try:
-            target_pose = self.metas[i]["poses_world"][object_id][:4, :] # 4x4 -> 3x4
+            target_pose = self.metas[key]["poses_world"][object_id][:4, :] # 4x4 -> 3x4
         except KeyError:
-            target_pose = None
+            target_pose = 0 # No Pose Provided; torch batching doens't allow None
         
         self.source_points[i] = torch.tensor(source_pcd).float()
         self.target_points[i] = torch.tensor(target_pcd).float()
-        self.target_poses[i] = target_pose if target_pose is not None else None
+        self.target_poses[i] = target_pose if target_pose is not 0 else 0
                 
 
     def cache_model_data(self, object_id):
