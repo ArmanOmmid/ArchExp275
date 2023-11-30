@@ -64,6 +64,7 @@ class PoseData:
 
         self.keylist = list(self.data.keys())
 
+        self.cache_is_set = False
         self.object_cache = object_cache
         self.object_cache_path = os.path.join(self.models_path, "objects.npz")
         if self.object_cache not in [False, None]:
@@ -84,8 +85,10 @@ class PoseData:
         return objects
 
     def get_mesh(self, object_id):
-        if isinstance(self.object_cache, np.ndarray):
+        if isinstance(self.object_cache, np.lib.npyio.NpzFile):
+            print("A")
             return self.object_cache[f"{object_id}"].item()
+        print("B")
         object_info = self.objects[object_id]
         location = object_info["location"].split("/")[-1]
         visual_dae_path = os.path.join(self.models_path, location, "visual_meshes", "visual.dae")
@@ -236,7 +239,7 @@ class PoseData:
 
         return PoseData(self.data_path, self.models_path, split_processed_data=(self.objects, split_data, split_nested_data, self.object_cache))
 
-    def npz(self, dataset_folder, levels=None, split=None, mesh_samples=None):
+    def npz(self, npz_dataset_path, levels=None, split=None):
         
         pose_data = self
         if split is not None:
@@ -244,14 +247,15 @@ class PoseData:
         if levels is not None:
             pose_data = self.level_split(levels)
 
-        os.makedirs(dataset_folder)
+        os.makedirs(npz_dataset_path)
 
         if isinstance(self.object_cache, np.ndarray):
-            shutil.copy(self.object_cache_path, os.path.join(dataset_folder, "objects.npz"))
+            shutil.copy(self.object_cache_path, os.path.join(npz_dataset_path, "objects.npz"))
+        else:
+            print("WARNING: objects.npz is not cached")
         
-        scene_path = os.path.join(dataset_folder, "scenes")
+        scene_path = os.path.join(npz_dataset_path, "scenes")
         os.makedirs(scene_path)
-        length = len(list(self.data.keys()))
         for i, key in enumerate(self.data.keys()):
 
             l, s, v = key
@@ -266,6 +270,23 @@ class PoseData:
 
             scene_path_i = os.path.join(scene_path, f"{l}-{s}-{v}")
             np.savez(scene_path_i, color=color, depth=depth, label=label, meta=meta)
+
+        return self.data.keys()
+
+class PoseDataNPZ():
+    def __init__(self, data_path, models_path, npz_data_path, levels=None, split=None) -> None:
+        
+        pose_data = PoseData(data_path, models_path)
+        
+        if os.path.exists(npz_data_path):
+            keys = 
+        else:
+
+            .npz(npz_data_path)
+
+
+
+
 
 class PoseDataset(torch.utils.data.Dataset):
     def __init__(self, data_path, models_path, levels=None, split=None, mesh_samples=None):
