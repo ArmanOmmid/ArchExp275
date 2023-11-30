@@ -6,6 +6,18 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import cv2
 
+def back_project(depth, meta, world=True):
+    intrinsic = meta['intrinsic']
+    R_extrinsic = meta["extrinsic"][:3, :3]
+    T_extrinsic = meta["extrinsic"][:3, 3]
+    z = depth
+    v, u = np.indices(z.shape)
+    uv1 = np.stack([u + 0.5, v + 0.5, np.ones_like(z)], axis=-1)
+    points = uv1 @ np.linalg.inv(intrinsic).T * z[..., None]  # [H, W, 3]
+    if world:
+        points = (points - T_extrinsic) @ R_extrinsic
+    return points
+
 def show_points(points):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, projection='3d')
