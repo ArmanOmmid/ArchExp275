@@ -299,6 +299,7 @@ class PoseDataset(torch.utils.data.Dataset):
             self.length += count
 
         self.point_cloud_cache = [False] * self.length
+        self.indices = [None] * self.length
         self.source_points = [None] * self.length # From Models ; Baseline Objects
         self.target_points = [None] * self.length # Back Projected ; Off-Pose
         self.target_poses = [None] * self.length # Ground Truth Poses of Target Points
@@ -353,9 +354,13 @@ class PoseDataset(torch.utils.data.Dataset):
             self.keys.pop(i)
             self.object_ids.pop(i)
             self.point_cloud_cache.pop(i)
+            self.indices.pop(i)
             self.source_points.pop(i)
             self.target_points.pop(i)
             self.target_poses.pop(i)
+            return # ?
+
+        self.indices[i] = indices
 
         target_pcd = self.back_projections[key][indices]
 
