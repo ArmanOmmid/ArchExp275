@@ -313,7 +313,7 @@ class PoseDataset(torch.utils.data.Dataset):
         key = self.keys[i]
         
         self.cache_scene_data(key)
-        object_id, key = self.cache_point_clouds(i, object_id, key) # Incase it didn't exist
+        object_id = self.cache_point_clouds(i, object_id, key) # Incase it didn't exist
 
         extras = (
             i, # index
