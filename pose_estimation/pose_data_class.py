@@ -236,7 +236,7 @@ class PoseData:
 
         return PoseData(self.data_path, self.models_path, split_processed_data=(self.objects, split_data, split_nested_data, self.object_cache))
 
-    def create_organized_dataset_to_disk(self, dataset_folder, levels=None, split=None, mesh_samples=None):
+    def npz(self, dataset_folder, levels=None, split=None, mesh_samples=None):
         
         pose_data = self
         if split is not None:
@@ -246,7 +246,8 @@ class PoseData:
 
         os.makedirs(dataset_folder)
 
-        shutil.copy(self.object_cache_path, os.path.join(dataset_folder, "objects.npz"))
+        if isinstance(self.object_cache, np.ndarray):
+            shutil.copy(self.object_cache_path, os.path.join(dataset_folder, "objects.npz"))
         
         scene_path = os.path.join(dataset_folder, "scenes")
         os.makedirs(scene_path)
@@ -265,38 +266,6 @@ class PoseData:
 
             scene_path_i = os.path.join(scene_path, f"{l}-{s}-{v}")
             np.savez(scene_path_i, color=color, depth=depth, label=label, meta=meta)
-
-            # if i % 100 == 0 :
-            #     print(f"{i} / {length}")
-            
-
-            # object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
-
-            # for j, object_id in enumerate(object_ids):
-
-            #     data_string = f"{i+j}_{l}-{s}-{v}_{object_id}"
-
-            #     datum_path = os.path.join(dataset_folder, data_string)
-            #     os.makedirs(datum_path)
-
-            #     indices = np.where(label[key] == object_id)
-            #     target_pcd = back_projection[indices]
-
-            #     sample_count = len(target_pcd) if mesh_samples is None else mesh_samples
-            #     source_pcd, faces = trimesh.sample.sample_surface(self.source_meshes[object_id], sample_count)
-            #     source_pcd = source_pcd * self.metas[key]["scales"][object_id]
-            #     # target_pcd  = target_pcd / self.metas[key]["scales"][object_id]
-
-            #     rgb_crop = crop_image_using_segmentation(rgb, indices)
-
-            #     try:
-            #         target_pose = self.metas[key]["poses_world"][object_id][:3, :] # 4x4 -> 3x4
-            #     except KeyError:
-            #         target_pose = 0 # No Pose Provided; torch batching doens't allow None
-
-            #     data_components = [
-
-            #     ]
 
 class PoseDataset(torch.utils.data.Dataset):
     def __init__(self, data_path, models_path, levels=None, split=None, mesh_samples=None):
