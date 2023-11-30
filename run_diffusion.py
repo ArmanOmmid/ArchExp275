@@ -116,11 +116,11 @@ def main(args):
         # num_classes=args.num_classes
     # )
 
-    patch_size = [2, 2]
+    patch_size = [1, 1]
     embed_dim = 128
     depths = [3, 3, 1]
     num_heads = [8, 16, 32]
-    window_size = [4, 4]
+    window_size = [2, 2]
     num_classes = 101
 
     global_stages = 1
