@@ -51,7 +51,7 @@ class PoseData:
     CSV_FILENAME = "objects_v1.csv"
     DATA_FOLDERNAME = "v2.2"
 
-    def __init__(self, data_path, models_path, object_cache=True, split_processed_data=None) -> None:
+    def __init__(self, data_path, models_path, make_object_cache=False, split_processed_data=None) -> None:
 
         self.data_path = data_path
         self.models_path = models_path
@@ -64,9 +64,11 @@ class PoseData:
 
         self.keylist = list(self.data.keys())
 
-        self.cache_is_set = False
-        self.object_cache = object_cache
+        self.object_cache = make_object_cache
         self.object_cache_path = os.path.join(self.models_path, "objects.npz")
+
+        if os.path.exists(self.object_cache_path):
+            self.object_cache = True # Why Not
         if self.object_cache not in [False, None]:
             if self.object_cache is True: # We may have gotten it from a split
                 if not os.path.exists(self.object_cache_path):
@@ -247,7 +249,7 @@ class PoseData:
 
         os.makedirs(npz_dataset_path)
 
-        if isinstance(self.object_cache, np.ndarray):
+        if isinstance(self.object_cache, np.lib.npyio.NpzFile):
             shutil.copy(self.object_cache_path, os.path.join(npz_dataset_path, "objects.npz"))
         else:
             print("WARNING: objects.npz is not cached")
@@ -272,9 +274,9 @@ class PoseData:
         return self.data.keys()
 
 class PoseDataNPZ():
-    def __init__(self, data_path, models_path, npz_data_path, levels=None, split=None) -> None:
+    def __init__(self, data_path, models_path, npz_data_path, levels=None, split=None, make_object_cache=False) -> None:
         
-        self.pose_data = PoseData(data_path, models_path)
+        self.pose_data = PoseData(data_path, models_path, make_object_cache=make_object_cache)
         self.npz_data_path = npz_data_path
 
         self.npz(npz_data_path)
@@ -283,14 +285,13 @@ class PoseDataNPZ():
         
         self.objects_npz_path = os.path.join(npz_data_path, "objects.npz")
         if os.path.exists(self.objects_npz_path):
-            self.info = self.objects["info"]
             self.objects = np.load(os.path.join(npz_data_path, "objects.npz"), allow_pickle=True)
+            self.info = self.objects["info"]
         else:
             self.info = self.pose_data.objects
             self.objects = None # Will have to get it manualyl from PoseData.get_mesh()
 
-        self.object_RAM_cache = [None] * len(self.objects)
-        self.info = self.objects["info"]
+        self.object_RAM_cache = [None] * len(self.info)
 
         self.data = {}
         for key in self.keylist:
@@ -355,3 +356,5 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
             color = scene["color"]
             depth = scene["depth"]
             label = scene["label"]
+
+            
