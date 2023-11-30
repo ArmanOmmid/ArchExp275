@@ -157,8 +157,8 @@ def main(args):
         "smooth_conv" : smooth_conv,
     }
 
-    print(model_configs)
-    summary(model, input_size=[1, input_channels, *input_size], depth=4)
+    # print(model_configs)
+    # summary(model, input_size=[1, input_channels, *input_size], depth=4)
     # print(model)
     # print(args)
 
