@@ -312,7 +312,7 @@ class PoseDataset(torch.utils.data.Dataset):
         source_pcd * self.metas[key]["scales"][object_id]
 
         try:
-            target_pose = self.metas[key]["poses_world"][object_id][:4, :] # 4x4 -> 3x4
+            target_pose = self.metas[key]["poses_world"][object_id][:3, :] # 4x4 -> 3x4
         except KeyError:
             target_pose = 0 # No Pose Provided; torch batching doens't allow None
         
