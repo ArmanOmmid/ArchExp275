@@ -138,19 +138,19 @@ class PoseData:
                     entry = pickle.load(f)
             else:
                 # Normlize condition
-                normalizer = None
-                # normalizer = 255 if component == "color" \
-                #         else 1000 if component == "depth" \
+                dtype = None
+                # dtype = np.uint8 if component == "color" \
+                #         else np.int16 if component == "depth" \
                 #         else normalizer
                 # Closure over variable
-                def closure(filepath, normalizer):
+                def closure(filepath, dtype=None):
                     # Generate PNG
                     def generator():
-                        if normalizer is not None:
-                            return np.array(Image.open(filepath)) / normalizer
+                        if dtype is not None:
+                            return np.array(Image.open(filepath), dtype=dtype)
                         return np.array(Image.open(filepath))
                     return generator
-                entry = closure(filepath, normalizer)
+                entry = closure(filepath, dtype)
 
             # Save memory by making these point to the same object
             data[key][component] = nested_data[level][scene][variant][component] = entry
@@ -261,11 +261,11 @@ class PoseData:
 
             # color = scene["color"]() # normalization 255
             depth = scene["depth"]() # normalization 1000
-            print(depth.dtype)
+            # print(depth.dtype)
             _max = np.max(depth)
             _min = np.min(depth)
             if _max > max: max = _max
-            if _min > min: min = _min
+            if _min < min: min = _min
             # label = scene["label"]()
             # meta = scene["meta"]
             # projection = back_project(depth, meta)
