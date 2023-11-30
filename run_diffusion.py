@@ -117,13 +117,13 @@ def main(args):
     # )
 
     patch_size = [1, 1]
-    embed_dim = 256
-    depths = [2, 2]
-    num_heads = [4, 8, 16]
+    embed_dim = 192
+    depths = [3, 3]
+    num_heads = [6, 12, 124]
     window_size = [2, 2]
     num_classes = 101
 
-    global_stages = 1
+    global_stages = 2
     input_size = [latent_size, latent_size]
     final_downsample = False
     residual_cross_attention = True
