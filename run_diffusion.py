@@ -173,7 +173,7 @@ def main(args):
     with open(MODEL_CONFIGS_PATH, 'w') as f:
         json.dump(model_configs, f, indent=4)
     with open(SCRIPT_ARGS_PATH, 'w') as f:
-        f.write(args)
+        f.write(args.__str__())
     
     ema = deepcopy(model).to(device)
     requires_grad(ema, False)
