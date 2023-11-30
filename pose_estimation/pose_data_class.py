@@ -222,6 +222,7 @@ class PoseData:
 
         NUM_CLASSES = len(pose_data.objects)
         object_infos = [None] * NUM_CLASSES
+        object_meshes = [None] * NUM_CLASSES
 
         mesh_path = os.path.join(dataset_folder, "meshes")
         os.makedirs(mesh_path)
@@ -229,8 +230,8 @@ class PoseData:
             object_infos[i] = pose_data.get_info(i)
             mesh_path_i = os.path.join(mesh_path, f'{i}.obj')
 
-            mesh_i = pose_data.get_mesh(i)
-            mesh_i.export(file_obj=mesh_path_i, file_type='obj')
+            # mesh_i = pose_data.get_mesh(i)
+            # # mesh_i.export(file_obj=mesh_path_i, file_type='obj')
 
         np.save(os.path.join(dataset_folder, f"objects.npy"),  np.array(object_infos))
         
