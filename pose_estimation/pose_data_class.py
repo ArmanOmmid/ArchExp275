@@ -280,8 +280,16 @@ class PoseDataNPZ():
         self.npz(npz_data_path)
 
         self.keylist = list(self.pose_data.keys())
+        
+        self.objects_npz_path = os.path.join(npz_data_path, "objects.npz")
+        if os.path.exists(self.objects_npz_path):
+            self.info = self.objects["info"]
+            self.objects = np.load(os.path.join(npz_data_path, "objects.npz"), allow_pickle=True)
+        else:
+            self.info = self.pose_data.objects
+            self.objects = None # Will have to get it manualyl from PoseData.get_mesh()
 
-        self.objects = np.load(os.path.join(npz_data_path, "objects.npz"), allow_pickle=True)
+        self.object_RAM_cache = [None] * len(self.objects)
         self.info = self.objects["info"]
 
         self.data = {}
@@ -294,7 +302,7 @@ class PoseDataNPZ():
     def npz(self, npz_data_path):
         self.npz_data_path = npz_data_path
         if os.path.exists(self.npz_data_path):
-            print(f"Folder Already Exists: {self.npz_data_path}")
+            print(f"NPZ Path Already Exists: {self.npz_data_path}")
             return
         self.pose_data.npz(self.npz_data_path)
 
@@ -316,135 +324,34 @@ class PoseDataNPZ():
         else:
             return self.data[i] # if you give a key tuple (l, s, v)
         
-    def get_mesh(self, i):
-        return self.objects[f"{i}"]
-
-    def get_info(self, i):
-        return self.info[i]
-
-
-class PoseDataset(torch.utils.data.Dataset):
-    def __init__(self, data_path, models_path, levels=None, split=None, mesh_samples=None):
+    def get_mesh(self, obj_id):
+        if self.object_RAM_cache[obj_id] is not None:
+            return self.object_RAM_cache[obj_id]
+        elif isinstance(self.objects, np.lib.npyio.NpzFile):
+            mesh = self.objects[f"{obj_id}"].item()
+        elif self.objects is None:
+            mesh = self.pose_data.get_mesh(obj_id)
         
-        pose_data = PoseData(data_path, models_path)
+        self.object_RAM_cache[obj_id] = mesh # Cache the mesh!
+        return mesh
 
-        if split is not None:
-            pose_data = pose_data.txt_split(split)
-        if levels is not None:
-            pose_data = pose_data.level_split(levels)
-
-        self.pose_data = pose_data
-        self.mesh_samples = mesh_samples
-
-        # Create Caches
-        NUM_CLASSES = len(pose_data.objects)
-        self.object_cache = [False] * NUM_CLASSES
-        self.object_infos = [None] * NUM_CLASSES
-        self.source_meshes = [None] * NUM_CLASSES
-
-        self.object_to_id = {}
-        for i, object_info in enumerate(self.pose_data.objects):
-            self.object_to_id[object_info["object"]] = i
-
-        self.scene_cache = {}
-        self.scene_count = len(pose_data.keys())
-        self.rgbs = {}
-        self.depths = {}
-        self.labels = {}
-        self.back_projections = {}
-
-        self.length = 0
-        self.metas = {}
-        self.keys = []
-        self.object_ids = []
-        for i, key in enumerate(self.pose_data.keys()):
-            self.scene_cache[key] = False
-            self.metas[key] = self.pose_data[key]["meta"]
-            objects = self.metas[key]["object_names"]
-            count = len(objects)
-
-            self.keys += [key] * count
-            self.object_ids += [self.object_to_id[item] for item in objects]
-            self.length += count
-
-        self.point_cloud_cache = [False] * self.length
-        self.indices = [None] * self.length
-        self.source_points = [None] * self.length # From Models ; Baseline Objects
-        self.target_points = [None] * self.length # Back Projected ; Off-Pose
-        self.target_poses = [None] * self.length # Ground Truth Poses of Target Points
-
-
-    def __len__(self):
-        return len(self.object_ids)
+    def get_info(self, obj_id):
+        if self.info is None:
+            return self.pose_data.get_info(obj_id)
+        return self.info[obj_id]
     
-    def __getitem__(self, i):
+    def sample_mesh(self, obj_id, n):
+        return trimesh.sample.sample_surface(self.get_mesh(obj_id), n)
 
-        object_id = self.object_ids[i]
-        key = self.keys[i]
+class PoseDataNPZTorch(torch.utils.data.Dataset):
+    def __init__(self, data_path, models_path, npz_data_path, levels=None, split=None, mesh_samples=None):
         
-        self.cache_scene_data(key)
-        self.cache_point_clouds(i, object_id, key)
+        self.data = PoseDataNPZ(data_path, models_path, npz_data_path, levels, split)
 
-        extras = (
-            i, # index
-            object_id,
-            key, # scene key (level, scene, variant)
-            self.object_infos[object_id], # info
-            # self.source_meshes[object_id], # mesh
-        )
+        for key in self.data.keys():
 
-        source_pcd = self.source_points[i]
-        target_pcd = self.target_points[i]
-        target_pose = self.target_poses[i]
+            scene = self.data[key] # color, depth, label, meta
 
-        return source_pcd, target_pcd, target_pose, extras
-
-    def cache_scene_data(self, key):
-        if self.scene_cache[key] is not False:
-            return
-        self.scene_cache[key] = True
-        
-        scene = self.pose_data[key]
-        self.rgbs[key] = scene["color"]()
-        self.depths[key] = scene["depth"]()
-        self.labels[key] = scene["label"]()
-        self.back_projections[key] = back_project(self.depths[key], self.metas[key])
-
-    def cache_point_clouds(self, i, object_id, key):
-        if self.point_cloud_cache[i] is not False:
-            return
-        self.point_cloud_cache[i] = True
-        
-        indices = np.where(self.labels[key] == object_id)
-
-        # False Register
-        if len(indices[0]) == 0:
-            print(f"MisRegister: {key} : {object_id}")
-
-        self.indices[i] = indices
-
-        target_pcd = self.back_projections[key][indices]
-
-        self.cache_model_data(object_id) 
-
-        sample_count = len(target_pcd) if self.mesh_samples is None else self.mesh_samples
-        source_pcd, faces = trimesh.sample.sample_surface(self.source_meshes[object_id], sample_count)
-        source_pcd = source_pcd * self.metas[key]["scales"][object_id]
-
-        try:
-            target_pose = self.metas[key]["poses_world"][object_id][:3, :] # 4x4 -> 3x4
-        except KeyError:
-            target_pose = 0 # No Pose Provided; torch batching doens't allow None
-        
-        self.source_points[i] = torch.tensor(source_pcd).float()
-        self.target_points[i] = torch.tensor(target_pcd).float()
-        self.target_poses[i] = target_pose if target_pose != 0 else 0
-
-
-    def cache_model_data(self, object_id):
-        if self.object_cache[object_id] is not False:
-            return
-        self.object_cache[object_id] = True
-        
-        self.object_infos[object_id] = self.pose_data.get_info(object_id)
-        self.source_meshes[object_id] = self.pose_data.get_mesh(object_id)  
+            color = scene["color"]
+            depth = scene["depth"]
+            label = scene["label"]
