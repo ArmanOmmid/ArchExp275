@@ -348,7 +348,7 @@ class PoseDataset(torch.utils.data.Dataset):
         indices = np.where(self.labels[key] == object_id)
 
         # False Register
-        if len(indices) == 0:
+        if len(indices[0]) == 0:
             print(f"MisRegister: {key}-{object_id}")
             self.keys.pop(i)
             self.object_ids.pop(i)
