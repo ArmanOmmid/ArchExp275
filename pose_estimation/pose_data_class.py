@@ -284,8 +284,6 @@ class PoseDataset(torch.utils.data.Dataset):
         target_pcd = self.target_points[i]
         target_pose = self.target_poses[i]
 
-        print(source_pcd, target_pcd, target_pose, extras)
-
         return source_pcd, target_pcd, target_pose, extras
 
     def cache_scene_data(self, key):
