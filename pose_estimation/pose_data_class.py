@@ -347,17 +347,20 @@ class PoseDataset(torch.utils.data.Dataset):
         
         indices = np.where(self.labels[key] == object_id)
 
-        # # False Register
-        # if len(indices) == 0:
-        #     print(f"MisRegister: {key}-{object_id}")
-        #     self.keys.pop(i)
-        #     self.object_ids.pop(i)
-        #     self.point_cloud_cache.pop(i)
-        #     self.indices.pop(i)
-        #     self.source_points.pop(i)
-        #     self.target_points.pop(i)
-        #     self.target_poses.pop(i)
-        #     return # ?
+        # False Register
+        if len(indices) == 0:
+            print(f"MisRegister: {key}-{object_id}")
+            self.keys.pop(i)
+            self.object_ids.pop(i)
+            self.point_cloud_cache.pop(i)
+            self.indices.pop(i)
+            self.source_points.pop(i)
+            self.target_points.pop(i)
+            self.target_poses.pop(i)
+
+            object_id = self.object_ids[i]
+            key = self.keys[i]
+            indices = np.where(self.labels[key] == object_id)
 
         self.indices[i] = indices
 
