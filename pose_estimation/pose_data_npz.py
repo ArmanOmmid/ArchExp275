@@ -101,13 +101,14 @@ class PoseDataNPZ():
 
 class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __init__(self, npz_data_path, data_path=None, models_path=None, 
-                 levels=None, split=None, samples=30_000, fps_downsample=False,
-                 resize=(432, 768), aspect_ratio=True, margin=0):
+                 levels=None, split=None, samples=8_000,
+                 resize=(432, 768), aspect_ratio=True, margin=8): # Helps bigger images, worse on small images
+
+        assert samples is not None, "No Longer Supporting Variable Samples"
 
         self.data = PoseDataNPZ(npz_data_path, data_path, models_path, levels, split)
         self.num_classes = len(self.data.info)
         self.samples = samples
-        self.fps_downsample = fps_downsample
 
         self.resize = resize
         self.aspect_ratio = aspect_ratio
@@ -124,15 +125,13 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.data)
     
-    def sample_source_pcd(self, obj_id, n=None):
+    def sample_source_pcd(self, obj_id):
         if self.source_pcd_cache[obj_id] is None:
-            n = n if self.samples is None and n is not None else self.samples
             self.source_pcd_cache[obj_id] = \
                 self.data.sample_mesh(obj_id, self.samples).astype(np.float32)
             
         return self.source_pcd_cache[obj_id]
         
-
     def __getitem__(self, i):
         key, obj_id = self._data[i]
 
@@ -140,29 +139,28 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         color = scene["color"] * 255
         depth = scene["depth"] / 1000
-        label = scene["label"]
+        # label = scene["label"]
         mask = scene["label"] == obj_id
         meta = scene["meta"][()]
 
-        (color, depth, label, mask) = crop_and_resize_multiple(
-            (color, depth, label, mask), 
+        (color, depth, mask), (scale, translate) = crop_and_resize_multiple(
+            (color, depth, mask), 
             mask, target_size=self.resize, margin=self.margin, aspect_ratio=self.aspect_ratio)
 
-        target_pcd = back_project(scene["depth"] / 1000, meta, mask).astype(np.float32)
-        
-        t_samples = len(target_pcd)
-        if self.samples is not None:
-            if t_samples > self.samples: # This is an unlikely case. Fps can be slow but this still might be fine.
-                if self.fps_downsample:
-                    target_pcd = fps(target_pcd, self.samples)
-                else:
-                    target_pcd = target_pcd[:self.samples]
-            elif t_samples < self.samples:
-                repeats = np.ceil(self.samples / t_samples).astype(int)
-                target_pcd = np.repeat(target_pcd, repeats, axis=0)
-                target_pcd = target_pcd[:self.samples]
+        target_pcd = back_project(depth, meta, mask, (scale, translate)).astype(np.float32)
 
-        source_pcd = self.sample_source_pcd(obj_id, len(target_pcd)) * meta["scales"][obj_id]
+        t_samples = len(target_pcd)
+        if t_samples > self.samples:
+            sample_indices = np.linspace(start=0, stop=len(target_pcd)-1, num=self.samples, dtype=int)
+            target_pcd = target_pcd[sample_indices]
+        elif t_samples < self.samples:
+            repeats = np.ceil(self.samples / t_samples).astype(int)
+            target_pcd = np.repeat(target_pcd, repeats, axis=0)
+            target_pcd = target_pcd[:self.samples]
+            # If we do repeats, when we concatonate with RGB, RGB is limited to the original set
+            # So we just take the original points and concat and get rid of all duplicates
+
+        source_pcd = self.sample_source_pcd(obj_id) * meta["scales"][obj_id]
         pose = meta["poses_world"][obj_id]
 
-        return source_pcd, target_pcd, pose
+        return source_pcd, target_pcd, color, depth, mask, pose
