@@ -34,9 +34,9 @@ class XSwinFusion(_Network):
 
     def forward(self, pcd, rgb, mask_info):
 
-        mask, point_count, point_indices = mask_info
+        mask, indices = mask_info
 
-        print(mask.shape, point_count.shape, point_indices.shape)
+        print(mask.shape, indices.shape)
         
         rgb = self.segment_net(rgb)
 
