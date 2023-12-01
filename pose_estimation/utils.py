@@ -16,32 +16,35 @@ COLOR_PALETTE[-3] = [119, 135, 150]
 COLOR_PALETTE[-2] = [176, 194, 216]
 COLOR_PALETTE[-1] = [255, 255, 225]
 
-def back_project(depth, meta, world=True):
+def back_project(depth, meta, mask=None, transforms=None, world=True):
     intrinsic = meta['intrinsic']
     R_extrinsic = meta["extrinsic"][:3, :3]
     T_extrinsic = meta["extrinsic"][:3, 3]
-    z = depth
-    v, u = np.indices(z.shape)
-    uv1 = np.stack([u + 0.5, v + 0.5, np.ones_like(z)], axis=-1)
-    points = uv1 @ np.linalg.inv(intrinsic).T * z[..., None]  # [H, W, 3]
-    if world:
-        points = (points - T_extrinsic) @ R_extrinsic
-    return points
 
-def back_project(depth, meta, mask=None, world=True):
-    intrinsic = meta['intrinsic']
-    R_extrinsic = meta["extrinsic"][:3, :3]
-    T_extrinsic = meta["extrinsic"][:3, 3]
     if mask is None:
         v, u = np.indices(depth.shape)
     else:
         v, u = np.nonzero(mask)
         depth = depth[v, u]
+
+    if transforms is not None:
+        scale, translate = transforms
+        if translate is not None:
+            u = u + translate[0]
+            v = v + translate[1]
+        if scale is not None:
+            u = u / scale[0]
+            v = v / scale[1]
+
     uv1 = np.stack([u + 0.5, v + 0.5, np.ones_like(depth)], axis=-1)
     points = uv1 @ np.linalg.inv(intrinsic).T * depth[..., None]  # [H, W, 3]
     if world:
         points = (points - T_extrinsic) @ R_extrinsic
     return points
+
+    # Sort indices to ensure row-major order # NOTE : Doesn't seem to change anything
+    # sorted_indices = np.lexsort((u, v))
+    # v, u = v[sorted_indices], u[sorted_indices]
 
 def fps(points, count):
     # Implementation derived from slides
@@ -52,32 +55,83 @@ def fps(points, count):
         distances = np.minimum(distances, ((points - point_set[i])**2).sum(-1))
     return point_set
 
-def crop_and_resize(feature_map, mask, target_size=None, expand_margin=8):
+def crop_and_resize(feature_map, mask, target_size=None, margin=12, aspect_ratio=True, mask_fill=False):
+
+    # 144, 256
+    # 288, 512
+    # 432, 768
+    # MUST BE GIVEN WITH H, W, C
+        
+    H, W = feature_map.shape[:2]
+
+    if type(mask_fill) is int:
+        feature_map[mask == False] = mask_fill
 
     # Identify the object's coordinates from the segmentation map
     rows, cols = np.where(mask)
     if not len(rows) or not len(cols):
         # Return the original image if no object is found in the segmentation map
-        return feature_map
-
-     original_crop_size = (max_x - min_x + 1, max_y - min_y + 1)
+        return feature_map, np.ones(3,)
     
     # Determine the bounding box
-    min_row, max_row = max(rows.min() - expand_margin, 0), min(rows.max() + expand_margin, feature_map.shape[0])
-    min_col, max_col = max(cols.min() - expand_margin, 0), min(cols.max() + expand_margin, feature_map.shape[1])
+    min_row = max(rows.min() - margin, 0)
+    max_row = min(rows.max() + margin, H)
+    min_col = max(cols.min() - margin, 0)
+    max_col = min(cols.max() + margin, W)
+
+    if aspect_ratio:
+        ratio = W / H
+        # Calculate aspect ratio of the bounding box
+        bbox_width = max_col - min_col
+        bbox_height = max_row - min_row
+        bbox_aspect_ratio = bbox_width / bbox_height
+
+        # Adjust margins to maintain the original aspect ratio
+        if bbox_aspect_ratio < ratio:
+            # Increase width
+            added_width = int(bbox_height * ratio) - bbox_width
+            min_col = max(min_col - added_width // 2, 0)
+            max_col = min(max_col + added_width // 2, W)
+        elif bbox_aspect_ratio > ratio:
+            # Increase height
+            added_height = int(bbox_width / ratio) - bbox_height
+            min_row = max(min_row - added_height // 2, 0)
+            max_row = min(max_row + added_height // 2, H)
+
+    translation = np.array([min_col, min_row, 0])  # x and y shifts, 0 for z
 
     # Crop the image
     feature_map = feature_map[min_row:max_row, min_col:max_col]
 
     if target_size is not None:
-        H, W = target_size
-        feature_map = cv2.resize(feature_map, (W, H), interpolation=cv2.INTER_AREA)
+        T_H, T_W = target_size
 
-    scale = np.array([
-        target_size[0] / 
-    ])
+        dtype = None
+        if feature_map.dtype in [bool, np.bool8, np.bool_]:
+            dtype = feature_map.dtype
+            feature_map = feature_map.astype(np.uint8)
 
-    return feature_map
+        original_crop_size = (max_col - min_col + 1, max_row - min_row + 1)
+        feature_map = cv2.resize(feature_map, (T_W, T_H), interpolation=cv2.INTER_AREA)
+
+        if dtype is not None:
+            feature_map = feature_map.astype(dtype)
+
+        scale = np.array([
+            T_W / original_crop_size[0],  # x scale
+            T_H / original_crop_size[1],  # y scale
+            1.0])
+    else:
+        scale = np.ones(3,)
+
+    return feature_map, scale, translation
+
+def crop_and_resize_multiple(feature_maps, mask, target_size=None, margin=12, aspect_ratio=True, mask_fill=False):
+    new_maps = []
+    for map in feature_maps:
+        new_map, s, t = crop_and_resize(map, mask, target_size=target_size, margin=margin, aspect_ratio=aspect_ratio, mask_fill=mask_fill)
+        new_maps.append(new_map)
+    return new_maps, s, t
 
 def show_points(points):
     fig = plt.figure()
