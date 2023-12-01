@@ -7,7 +7,7 @@ import trimesh
 
 import torch
 
-from .utils import back_project, crop_image_using_segmentation
+from .utils import back_project, crop_image_using_segmentation, fps
 from .pose_data import PoseData
 
 class PoseDataNPZ():
@@ -27,10 +27,10 @@ class PoseDataNPZ():
         self.objects_npz_path = os.path.join(npz_data_path, "objects.npz")
         if os.path.exists(self.objects_npz_path):
             self.objects = np.load(os.path.join(npz_data_path, "objects.npz"), allow_pickle=True)
-            self.info = self.objects["info"]
+            self.info = self.objects["info"] # objects.csv
         else:
             self.info = self.pose_data.objects
-            self.objects = None # Will have to get it manualyl from PoseData.get_mesh()
+            self.objects = None # Will have to get it manually from PoseData.get_mesh()
 
         self.object_RAM_cache = [None] * len(self.info)
 
@@ -94,29 +94,64 @@ class PoseDataNPZ():
         return self.info[obj_id]
     
     def sample_mesh(self, obj_id, n):
-        return trimesh.sample.sample_surface(self.get_mesh(obj_id), n)
+        return trimesh.sample.sample_surface(self.get_mesh(obj_id), n)[0] # samples, faces
     
     def meta(self, key):
         return self.data[key]["meta"][()]
 
 class PoseDataNPZTorch(torch.utils.data.Dataset):
-    def __init__(self, data_path, models_path, npz_data_path, levels=None, split=None, mesh_samples=None):
+    def __init__(self, npz_data_path, data_path=None, models_path=None, 
+                 levels=None, split=None, mesh_samples=20_000):
         
 
-        self.data = PoseDataNPZ(data_path, models_path, npz_data_path, levels, split)
-        num_classes = len(self.data.info)
+        self.data = PoseDataNPZ(npz_data_path, data_path, models_path, levels, split)
+        self.num_classes = len(self.data.info)
+        self.mesh_samples = mesh_samples
+
+        self.source_pcd_cache = [None] * self.num_classes
+
+        self._data = []
 
         for i, key in enumerate(self.data.keylist):
+            for obj_id in self.data.meta(key)["objects"]:
+                self._data.append((key, obj_id))
 
-            scene = self.data[key] # color, depth, label, meta
+    def __len__(self):
+        return len(self.data)
+    
+    def sample_source_pcd(self, obj_id, n):
+        if self.source_pcd_cache[obj_id] is None:
+            n = n if self.mesh_samples is None else self.mesh_samples
+            self.source_pcd_cache[obj_id] = self.data.sample_mesh(obj_id, self.mesh_samples)
 
-            rgb = scene["color"]
-            depth = scene["depth"]
-            label = scene["label"]
-            meta = scene["meta"]
+        return self.source_pcd_cache[obj_id]
+        
 
-            object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
+    def __getitem__(self, i):
+        key, obj_id = self._data[i]
 
-            world_frames = [None] * 79
+        scene = self.data[key]
+
+        # color = scene["color"] * 255
+        # depth = scene["depth"] / 1000
+        # label = scene["label"]
+        meta = scene["meta"][()]
+        projection = back_project(scene["depth"] / 1000, meta)
+
+        target_pcd = projection[np.where(scene["label"] == obj_id)] # average = 3000
+        source_pcd = self.sample_source_pcd(obj_id, len(target_pcd)) * meta["scales"][obj_id]
+        pose = meta["poses_world"][obj_id]
+
+        return source_pcd, target_pcd, pose
+
+
+
+
+
+
+
+
+
+
 
         

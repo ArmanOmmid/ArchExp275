@@ -33,6 +33,9 @@ class PoseData:
             3x3 matrix, viewer(opencv) -> image
         - object_ids (list) : 
             the object ids of interest.
+
+        - unique : unique labels 
+        - objects : CORRECT object ids list
     """
 
     INFO_HEADERS = ['object', 'class', 'source', 'location', 'metric', 'min_x', 'max_x', 'min_y', 'max_y', 'min_z', 'max_z', 'width', 'length', 'height', 'visual_symmetry', 'geometric_symmetry']

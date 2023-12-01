@@ -28,6 +28,14 @@ def back_project(depth, meta, world=True):
         points = (points - T_extrinsic) @ R_extrinsic
     return points
 
+def fps(points, count):
+    # Implementation derived from slides
+    point_set = np.zeros((count, 3))
+    distances = np.ones(points.shape[0]) * np.inf
+    for i in range(count):
+        point_set[i] = points[np.argmax(distances)]
+        distances = np.minimum(distances, ((points - point_set[i])**2).sum(-1))
+    return point_set
 
 def crop_image_using_segmentation(rgb_image, indices, expand_margin=5):
 
