@@ -189,6 +189,6 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         source_pcd = self.sample_source_pcd(obj_id) * meta["scales"][obj_id]
         pose = meta["poses_world"][obj_id][:3, :] # 4x4 -> 3x4
 
-        mask_info = (mask, point_count, point_indices)
+        mask_info = (mask, indices)
 
         return source_pcd, target_pcd, color, depth, mask_info, pose
