@@ -16,7 +16,7 @@ COLOR_PALETTE[-3] = [119, 135, 150]
 COLOR_PALETTE[-2] = [176, 194, 216]
 COLOR_PALETTE[-1] = [255, 255, 225]
 
-def back_project(depth, meta, mask=None, transforms=None, world=True):
+def back_project(depth, meta, mask=None, transforms=None, samples=None, world=True):
     intrinsic = meta['intrinsic']
     R_extrinsic = meta["extrinsic"][:3, :3]
     T_extrinsic = meta["extrinsic"][:3, 3]
@@ -25,6 +25,9 @@ def back_project(depth, meta, mask=None, transforms=None, world=True):
         v, u = np.indices(depth.shape)
     else:
         v, u = np.nonzero(mask)
+
+    if samples is not None:
+        v, u = sample_indices(v, u, samples)
         depth = depth[v, u]
 
     if transforms is not None:
@@ -40,7 +43,7 @@ def back_project(depth, meta, mask=None, transforms=None, world=True):
     points = uv1 @ np.linalg.inv(intrinsic).T * depth[..., None]  # [H, W, 3]
     if world:
         points = (points - T_extrinsic) @ R_extrinsic
-    return points
+    return points, np.array([v, u])
 
     # Sort indices to ensure row-major order # NOTE : Doesn't seem to change anything
     # sorted_indices = np.lexsort((u, v))
@@ -49,12 +52,13 @@ def back_project(depth, meta, mask=None, transforms=None, world=True):
 def sample_indices(v, u, max_samples):
     combined_indices = np.column_stack((v, u))
     total_indices = len(combined_indices)
-    if total_indices <= max:
+    if max_samples is None or total_indices <= max_samples:
         return combined_indices
     
-    sample_positions = np.linspace(0, total_indices - 1, num=max_samples)
+    sample_positions = np.linspace(0, total_indices - 1, num=max_samples, dtype=int)
     sample_indices = combined_indices[sample_positions]
-    return sample_indices
+
+    return sample_indices.T
 
 def fps(points, count):
     # Implementation derived from slides

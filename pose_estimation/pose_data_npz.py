@@ -172,9 +172,10 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         color = np.transpose(color, (2, 0, 1)) # H W C -> C H W # NOTE : Do this after crop/resize
 
-        target_pcd = back_project(depth, meta, mask, (scale, translate)).astype(np.float32)
+        target_pcd, indices = back_project(depth, meta, mask, (scale, translate), samples=self.samples).astype(np.float32)
 
         t_samples = len(target_pcd)
+
         if t_samples > self.samples:
             point_indices = np.linspace(start=0, stop=len(target_pcd)-1, num=self.samples, dtype=int)
             target_pcd = target_pcd[point_indices] # Sa
