@@ -45,7 +45,7 @@ class TNet(nn.Module):
         x = self.conv(x)
         x = self.maxpool(x)
         x = x.squeeze(-1)
-        print(x.shape)
+
         x = self.fc(x)
         x = self.pose(x)
         x += self.identity_vector
@@ -81,20 +81,23 @@ class PointNet(_Network):
 
         self.maxpool = LambdaModule(lambda x: torch.max(x, 2, keepdim=True)[0])
 
-        self.fc = nn.Sequential(
-            nn.Linear(1024, 512),
+        # Concat feature points + global information
+
+        self.out = [
+            nn.Conv1d(1024 + 64, 512, 1),
             nn.BatchNorm1d(512),
             nn.LeakyReLU(),
-            nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
-            nn.LeakyReLU(),
-            nn.Linear(256, 256),
-            nn.BatchNorm1d(256),
-            nn.LeakyReLU(),
-            nn.Linear(256, 256),
-            nn.BatchNorm1d(256),
-            nn.LeakyReLU(),
-        )
+        ]
+        dim = 512
+        while dim > out_channels:
+            self.out.append(nn.Conv1d(dim, dim//2, 1))
+            self.out.append(nn.BatchNorm1d(dim//2))
+            self.out.append(nn.LeakyReLU())
+            dim = dim // 2
+        self.out.append(nn.Conv1d(dim, out_channels, 1))
+        self.out.append(nn.BatchNorm1d(out_channels))
+
+        self.out = nn.Sequential(*self.out)
 
         # self.pose = nn.Linear(256, 12)
 
@@ -103,51 +106,32 @@ class PointNet(_Network):
 
         # B L C or B L 3
         
-        num_points = x.size(1)
+        # num_points = x.size(1)
 
-        x = self.permute(x)
-        print(x.shape)
+        x = self.permute(x) # Conv dims B C L
 
         T1 = self.input_tnet(x)
         x = self.permute(torch.bmm(self.permute(x), T1))
 
-        print(x.shape)
-
-
         x = self.conv1(x)
-
-        print(x.shape)
-
 
         T2 = self.feature_tnet(x)
         features = self.permute(torch.bmm(self.permute(x), T2))
-
-        print(features.shape)
         # features are B C L
 
         x = self.conv2(x)
 
-        print(x.shape)
-
-
         x = self.conv3(x)
-        x = self.maxpool(x)
+        x = self.maxpool(x) # global info : B, C, 1
 
-        print(x.shape)
+        x = x.repeat(1, 1, features.shape[-1]) # Broadcasted
 
-        print(x.shape)
-        print(features.shape)
+        x = torch.cat((features, x), dim=-2) # B, C1 + C2, L
 
-        features_broadcasted = x.repeat(1, 1, x.shape[-1]) # B, C1, x[-1] = L
-
-        print(features_broadcasted.shape) # B, C2, L
-
-        x = torch.cat((features_broadcasted, x), dim=-2) # B, C1 + C2, L
-
-        x = self.fc(x)
+        x = self.out(x)
 
         # x = self.pose(x)
 
         # x = x.view(-1, 3, 4)
 
-        return x
+        return x, T1, T2

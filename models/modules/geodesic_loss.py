@@ -41,8 +41,24 @@ class SpecialEuclideanGeodesicLoss(_Loss):
             return torch.stack([rotation_loss, translation_loss, ortho_loss])
         return (rotation_loss + translation_loss + ortho_loss) / 3
 
+class SpecialOrthogonalLoss(_Loss):
+    def __init__(self, weight=0.1) -> None:
+        super().__init__()
+        self.weight = weight
 
+    def forward(self, *rotations):
+        
+        losses = []
+        for R in rotations:
+            row, col = R.shape[-2:]
+            assert row == col
+            I = torch.eye(row, device=R.device).expand_as(R)
+            ortho_loss = torch.norm(torch.bmm(R, R.transpose(-2, -1)) - I, dim=(-2, -1)).mean()
+            losses.append(ortho_loss)
+        loss = torch.stack(losses).mean()
 
+        return loss * self.weight
+    
 
 
 

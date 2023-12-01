@@ -255,7 +255,6 @@ class XNetSwinTransformerDiffusion(_Network):
         x = x.contiguous().view(*B, H*W, C)
 
         if self.pos_embed is not None and self.has_global_stages:
-
             x = x + self.pos_embed
         x = self.middle(x, c) # ViT Encoder
 

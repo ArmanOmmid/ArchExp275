@@ -54,6 +54,7 @@ class XNetSwinTransformer(_Network):
         input_size: List[int] = None, # Needed to deduce the positional encodings in the global ViT layers
         final_downsample: bool = True,
         residual_cross_attention: bool = True,
+        smooth_conv=True,
         weights=None,
     ):
         super().__init__()
@@ -62,21 +63,24 @@ class XNetSwinTransformer(_Network):
             print("WARNING: Not Providing The Argument 'input_size' Means Global ViT Blocks will NOT Have Positional Embedings")
 
         self.num_classes = num_classes
+        self.patch_size = patch_size
         self.embed_dim = embed_dim
         self.depths = depths
         self.window_size = window_size
         self.residual_cross_attention = residual_cross_attention
 
+        self.smooth_conv = smooth_conv
         self.has_global_stages = global_stages > 0
         self.final_downsample = final_downsample and self.has_global_stages
         total_stage_blocks = sum(depths)
 
         # Smooth Patch Partitioning
-
-        self.smooth_conv_in = ConvolutionTriplet(3, embed_dim, kernel_size=3)
-
-        self.patching = Patching(embed_dim=embed_dim, patch_size=patch_size, norm_layer=norm_layer)
-
+        if self.smooth_conv:
+            self.smooth_conv_in = ConvolutionTriplet(3, embed_dim, kernel_size=3) # Our input now has latent dimensions instead of 3 (RGB)
+            self.patching = Patching(embed_dim=embed_dim, patch_size=patch_size, norm_layer=norm_layer)
+        else:
+            self.patching = Patching(embed_dim=3, patch_size=patch_size, norm_layer=norm_layer)
+    
         ################################################
         # ENCODER
         ################################################
@@ -186,7 +190,8 @@ class XNetSwinTransformer(_Network):
         self.unpatching = UnPatching(embed_dim=embed_dim, patch_size=patch_size) # Norm Layer uses default BatchNorm
 
         # This will concatonate as a residual connection
-        self.smooth_conv_out = ConvolutionTriplet(2*embed_dim, embed_dim, kernel_size=3)
+        if self.smooth_conv:
+            self.smooth_conv_out = ConvolutionTriplet(2*embed_dim, embed_dim, kernel_size=3)
 
         self.head = PointwiseConvolution(embed_dim, num_classes, channel_last=False)
 
@@ -198,7 +203,11 @@ class XNetSwinTransformer(_Network):
 
         original_spatial_shape = (x.size(-2), x.size(-1))
 
-        conv_residual = self.smooth_conv_in(x)
+        if self.smooth_conv:
+            conv_residual = self.smooth_conv_in(x)
+            x = self.patching(conv_residual)
+        else:
+            x = self.patching(x)
     
         x = self.patching(conv_residual) # B C H W -> B H W C
         
@@ -241,9 +250,9 @@ class XNetSwinTransformer(_Network):
         # Does equally spaced padding to recover the original shape to concat with
         x = self.unpatching(x, target_shape=original_spatial_shape) # B H W C -> B C H W
 
-        x = torch.cat((x, conv_residual), dim=-3) # ..., C, H, W
-
-        x = self.smooth_conv_out(x)
+        if self.smooth_conv:
+            x = torch.cat((x, conv_residual), dim=-3) # ..., C, H, W
+            x = self.smooth_conv_out(x)
 
         x = self.head(x)
 
@@ -261,8 +270,8 @@ class XNetSwinTransformer(_Network):
         device = next(self.parameters()).device
         downsample_count = len(self.depths) - int(not self.final_downsample) # downsample is one less in this case
 
-        latent_H = input_size[0] // self.window_size[0]
-        latent_W = input_size[1] // self.window_size[1]
+        latent_H = input_size[0] // self.patch_size[0]
+        latent_W = input_size[1] // self.patch_size[1]
         for i in range(downsample_count):
             latent_H = (latent_H // 2) + (latent_H % 2) # Dims are padded up
             latent_W = (latent_W // 2)+ (latent_W % 2) # Dims are padded up
