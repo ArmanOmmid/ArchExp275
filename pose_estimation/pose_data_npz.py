@@ -35,7 +35,7 @@ class PoseDataNPZ():
 
         if levels is not None:
             levels = [levels] if isinstance(levels, int) else levels
-            
+
         scenes_path = os.path.join(npz_data_path, "scenes")
         self.data = {}
         for file in os.listdir(scenes_path):
@@ -96,14 +96,18 @@ class PoseDataNPZ():
 class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __init__(self, data_path, models_path, npz_data_path, levels=None, split=None, mesh_samples=None):
         
-        self.data = PoseDataNPZ(data_path, models_path, npz_data_path, levels, split)
 
-        for key in self.data.keys():
+        self.data = PoseDataNPZ(data_path, models_path, npz_data_path, levels, split)
+        num_classes = len(self.data.info)
+
+        for i, key in enumerate(self.data.keylist):
 
             scene = self.data[key] # color, depth, label, meta
 
-            color = scene["color"]
-            depth = scene["depth"]
             label = scene["label"]
 
-            
+            object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
+
+        world_frames = [None] * 79
+
+        object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
