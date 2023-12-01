@@ -17,8 +17,9 @@ class PoseDataNPZ():
         if data_path is not None and models_path is not None:
             self.pose_data = PoseData(data_path, models_path, make_object_cache=make_object_cache)
         else:
-            assert os.path.exists(self.npz_data_path)
+            assert os.path.exists(self.npz_data_path), "Must Provide NPZ Path if not providing data_path and model_path"
             print(f"Presumed Preloaded NPZ Dataset: {npz_data_path}")
+            self.pose_data = None
             # NOTE : You cannot INTERNALLY do levels or splits this way
 
         self.npz(npz_data_path)
@@ -50,6 +51,8 @@ class PoseDataNPZ():
         self.keylist = list(self.data.keys())
 
     def npz(self, npz_data_path):
+        if self.pose_data is None:
+            return
         self.npz_data_path = npz_data_path
         if os.path.exists(self.npz_data_path):
             print(f"NPZ Path Already Exists: {self.npz_data_path}")
@@ -104,12 +107,13 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
             scene = self.data[key] # color, depth, label, meta
 
+            rgb = scene["color"]
+            depth = scene["depth"]
             label = scene["label"]
+            meta = scene["meta"]
 
             object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
 
-        world_frames = [None] * 79
-
-        object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
+            world_frames = [None] * 79
 
         
