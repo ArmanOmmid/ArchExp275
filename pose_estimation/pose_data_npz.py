@@ -122,8 +122,9 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
     def sample_source_pcd(self, obj_id, n):
         if self.source_pcd_cache[obj_id] is None:
             n = n if self.mesh_samples is None else self.mesh_samples
-            self.source_pcd_cache[obj_id] = self.data.sample_mesh(obj_id, self.mesh_samples)
-
+            self.source_pcd_cache[obj_id] = \
+                self.data.sample_mesh(obj_id, self.mesh_samples).astype(np.float32)
+            
         return self.source_pcd_cache[obj_id]
         
 
