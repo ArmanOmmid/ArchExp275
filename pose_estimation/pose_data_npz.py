@@ -143,7 +143,7 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         mask = scene["label"] == obj_id
         meta = scene["meta"][()]
 
-        (color, depth, mask), (scale, translate) = crop_and_resize_multiple(
+        (color, depth, mask), scale, translate = crop_and_resize_multiple(
             (color, depth, mask), 
             mask, target_size=self.resize, margin=self.margin, aspect_ratio=self.aspect_ratio)
 
