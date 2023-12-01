@@ -161,6 +161,6 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
             # So we just take the original points and concat and get rid of all duplicates
 
         source_pcd = self.sample_source_pcd(obj_id) * meta["scales"][obj_id]
-        pose = meta["poses_world"][obj_id]
+        pose = meta["poses_world"][obj_id][:3, :] # 4x4 -> 3x4
 
         return source_pcd, target_pcd, color, depth, mask, pose
