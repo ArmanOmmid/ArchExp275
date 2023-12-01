@@ -6,6 +6,14 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import cv2
 
+NUM_OBJECTS = 79
+cmap = get_cmap('rainbow', NUM_OBJECTS)
+COLOR_PALETTE = np.array([cmap(i)[:3] for i in range(NUM_OBJECTS + 3)])
+COLOR_PALETTE = np.array(COLOR_PALETTE * 255, dtype=np.uint8)
+COLOR_PALETTE[-3] = [119, 135, 150]
+COLOR_PALETTE[-2] = [176, 194, 216]
+COLOR_PALETTE[-1] = [255, 255, 225]
+
 def back_project(depth, meta, world=True):
     intrinsic = meta['intrinsic']
     R_extrinsic = meta["extrinsic"][:3, :3]

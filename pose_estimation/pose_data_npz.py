@@ -111,3 +111,5 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         world_frames = [None] * 79
 
         object_ids = [object_id for object_id in np.unique(label) if object_id < 79]
+
+        
