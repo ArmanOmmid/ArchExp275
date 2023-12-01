@@ -4,11 +4,7 @@ import pickle
 import numpy as np
 from PIL import Image
 import trimesh
-from matplotlib.pyplot import get_cmap
-
 import torch
-
-from .utils import back_project, crop_image_using_segmentation
 
 class PoseData:
 

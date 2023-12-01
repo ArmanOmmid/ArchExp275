@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import cv2
 
+from matplotlib.pyplot import get_cmap
+
 NUM_OBJECTS = 79
 cmap = get_cmap('rainbow', NUM_OBJECTS)
 COLOR_PALETTE = np.array([cmap(i)[:3] for i in range(NUM_OBJECTS + 3)])
