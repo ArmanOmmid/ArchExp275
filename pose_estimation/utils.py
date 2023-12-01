@@ -28,6 +28,21 @@ def back_project(depth, meta, world=True):
         points = (points - T_extrinsic) @ R_extrinsic
     return points
 
+def back_project(depth, meta, mask=None, world=True):
+    intrinsic = meta['intrinsic']
+    R_extrinsic = meta["extrinsic"][:3, :3]
+    T_extrinsic = meta["extrinsic"][:3, 3]
+    if mask is None:
+        v, u = np.indices(depth.shape)
+    else:
+        v, u = np.nonzero(mask)
+        depth = depth[v, u]
+    uv1 = np.stack([u + 0.5, v + 0.5, np.ones_like(depth)], axis=-1)
+    points = uv1 @ np.linalg.inv(intrinsic).T * depth[..., None]  # [H, W, 3]
+    if world:
+        points = (points - T_extrinsic) @ R_extrinsic
+    return points
+
 def fps(points, count):
     # Implementation derived from slides
     point_set = np.zeros((count, 3))

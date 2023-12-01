@@ -137,9 +137,9 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         # depth = scene["depth"] / 1000
         # label = scene["label"]
         meta = scene["meta"][()]
-        projection = back_project(scene["depth"] / 1000, meta)
 
-        target_pcd = projection[np.where(scene["label"] == obj_id)].astype(np.float32) # average = 3000
+        target_pcd = back_project(scene["depth"] / 1000, meta, 
+                                  scene["label"] == obj_id).astype(np.float32)
         source_pcd = self.sample_source_pcd(obj_id, len(target_pcd)) * meta["scales"][obj_id]
         pose = meta["poses_world"][obj_id]
 
