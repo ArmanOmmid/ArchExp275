@@ -35,7 +35,6 @@ def back_project(depth, meta, mask=None, transforms=None, world=True):
         if translate is not None:
             u = u + translate[0]
             v = v + translate[1]
-    print(depth.shape)
 
     uv1 = np.stack([u + 0.5, v + 0.5, np.ones_like(depth)], axis=-1)
     points = uv1 @ np.linalg.inv(intrinsic).T * depth[..., None]  # [H, W, 3]
@@ -46,6 +45,16 @@ def back_project(depth, meta, mask=None, transforms=None, world=True):
     # Sort indices to ensure row-major order # NOTE : Doesn't seem to change anything
     # sorted_indices = np.lexsort((u, v))
     # v, u = v[sorted_indices], u[sorted_indices]
+
+def sample_indices(v, u, max_samples):
+    combined_indices = np.column_stack((v, u))
+    total_indices = len(combined_indices)
+    if total_indices <= max:
+        return combined_indices
+    
+    sample_positions = np.linspace(0, total_indices - 1, num=max_samples)
+    sample_indices = combined_indices[sample_positions]
+    return sample_indices
 
 def fps(points, count):
     # Implementation derived from slides
