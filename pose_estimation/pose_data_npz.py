@@ -7,7 +7,7 @@ import trimesh
 
 import torch
 
-from .utils import back_project, crop_image_using_segmentation, fps
+from .utils import back_project, fps, crop_and_resize
 from .pose_data import PoseData
 
 class PoseDataNPZ():
@@ -101,13 +101,14 @@ class PoseDataNPZ():
 
 class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __init__(self, npz_data_path, data_path=None, models_path=None, 
-                 levels=None, split=None, samples=30_000, fps_downsample=False):
+                 levels=None, split=None, samples=30_000, crop_size=(64, 64), fps_downsample=False):
         
 
         self.data = PoseDataNPZ(npz_data_path, data_path, models_path, levels, split)
         self.num_classes = len(self.data.info)
         self.samples = samples
         self.fps_downsample = fps_downsample
+        self.crop_size = crop_size
 
         self.source_pcd_cache = [None] * self.num_classes
 
@@ -137,10 +138,16 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         # color = scene["color"] * 255
         # depth = scene["depth"] / 1000
         # label = scene["label"]
+
+
         meta = scene["meta"][()]
 
-        target_pcd = back_project(scene["depth"] / 1000, meta, 
-                                  scene["label"] == obj_id).astype(np.float32)
+        mask = scene["label"] == obj_id
+
+        color_CR = crop_and_resize(scene["color"], mask, self.crop_size)
+        depth_CR = crop_and_resize(scene["depth"], mask, self.crop_size)
+
+        target_pcd = back_project(scene["depth"] / 1000, meta, mask).astype(np.float32)
         
         t_samples = len(target_pcd)
         if self.samples is not None:
@@ -156,6 +163,9 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         source_pcd = self.sample_source_pcd(obj_id, len(target_pcd)) * meta["scales"][obj_id]
         pose = meta["poses_world"][obj_id]
+
+        # Additional
+        
 
         return source_pcd, target_pcd, pose
 

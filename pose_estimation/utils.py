@@ -52,22 +52,32 @@ def fps(points, count):
         distances = np.minimum(distances, ((points - point_set[i])**2).sum(-1))
     return point_set
 
-def crop_image_using_segmentation(rgb_image, indices, expand_margin=5):
+def crop_and_resize(feature_map, mask, target_size=None, expand_margin=8):
 
     # Identify the object's coordinates from the segmentation map
-    rows, cols = indices
+    rows, cols = np.where(mask)
     if not len(rows) or not len(cols):
         # Return the original image if no object is found in the segmentation map
-        return rgb_image
+        return feature_map
 
+     original_crop_size = (max_x - min_x + 1, max_y - min_y + 1)
+    
     # Determine the bounding box
-    min_row, max_row = max(rows.min() - expand_margin, 0), min(rows.max() + expand_margin, rgb_image.shape[0])
-    min_col, max_col = max(cols.min() - expand_margin, 0), min(cols.max() + expand_margin, rgb_image.shape[1])
+    min_row, max_row = max(rows.min() - expand_margin, 0), min(rows.max() + expand_margin, feature_map.shape[0])
+    min_col, max_col = max(cols.min() - expand_margin, 0), min(cols.max() + expand_margin, feature_map.shape[1])
 
     # Crop the image
-    cropped_image = rgb_image[min_row:max_row, min_col:max_col]
+    feature_map = feature_map[min_row:max_row, min_col:max_col]
 
-    return cropped_image
+    if target_size is not None:
+        H, W = target_size
+        feature_map = cv2.resize(feature_map, (W, H), interpolation=cv2.INTER_AREA)
+
+    scale = np.array([
+        target_size[0] / 
+    ])
+
+    return feature_map
 
 def show_points(points):
     fig = plt.figure()
