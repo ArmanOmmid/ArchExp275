@@ -30,7 +30,7 @@ class PoseDataNPZ():
         self.objects_npz_path = os.path.join(npz_data_path, "objects.npz")
         if os.path.exists(self.objects_npz_path):
             # Cache Handlers
-            if scene_path not in self._npz_handlers_cache:
+            if  self.objects_npz_path not in self._npz_handlers_cache:
                 self._npz_handlers_cache[self.objects_npz_path] = np.load(os.path.join(npz_data_path, "objects.npz"), allow_pickle=True, mmap_mode="r")
             self.objects = self._npz_handlers_cache[self.objects_npz_path]
             self.info = self.objects["info"] # objects.csv
@@ -110,13 +110,13 @@ class PoseDataNPZ():
     def meta(self, key):
         return self.data[key]["meta"][()]
     
-    def __del__(self):
-        try:
-            self.objects.close()
-        except:
-            pass
-        for loader in self.data.values():
-            loader.close()
+    # def __del__(self):
+    #     try:
+    #         self.objects.close()
+    #     except:
+    #         pass
+    #     for loader in self.data.values():
+    #         loader.close()
 
 class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __init__(self, npz_data_path, data_path=None, models_path=None, 

@@ -233,11 +233,11 @@ class PoseData:
 
         return PoseData(self.data_path, self.models_path, split_processed_data=(self.objects, split_data, split_nested_data, self.object_cache))
 
-    def __del__(self):
-        try:
-            self.object_cache.close()
-        except:
-            pass
+    # def __del__(self):
+    #     try:
+    #         self.object_cache.close()
+    #     except:
+    #         pass
 
     def npz(self, npz_dataset_path, levels=None, split=None):
         
