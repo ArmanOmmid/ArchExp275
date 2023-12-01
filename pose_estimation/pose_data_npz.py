@@ -97,7 +97,7 @@ class PoseDataNPZ():
         return trimesh.sample.sample_surface(self.get_mesh(obj_id), n)
     
     def meta(self, key):
-        return self.data[key]["meta"][()][key]
+        return self.data[key]["meta"][()]
 
 class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __init__(self, data_path, models_path, npz_data_path, levels=None, split=None, mesh_samples=None):
