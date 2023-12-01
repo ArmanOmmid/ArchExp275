@@ -175,21 +175,14 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         target_pcd, indices = back_project(depth, meta, mask, (scale, translate), samples=self.samples).astype(np.float32)
 
         t_samples = len(target_pcd)
+        print(indices.shape)
+        if t_samples < self.samples:
+            print(indices.shape)
+            repeats = np.ceil(self.samples / t_samples).astype(int)
+            indices = np.repeat(indices, repeats, axis=0)[:self.samples]
+            target_pcd = target_pcd[indices]
+            print(target_pcd.shape)
 
-        if t_samples > self.samples:
-            point_indices = np.linspace(start=0, stop=len(target_pcd)-1, num=self.samples, dtype=int)
-            target_pcd = target_pcd[point_indices] # Sa
-        elif t_samples <= self.samples:
-            # point_indices = np.arange(t_samples) # Get true point indices, ignoring repeats
-            if t_samples < self.samples:
-                point_indices = np.arange(t_samples)
-                repeats = np.ceil(self.samples / t_samples).astype(int)
-                point_indices = np.repeat(point_indices, repeats, axis=0)[:self.samples]
-                target_pcd = target_pcd[point_indices]
-            else:
-                point_indices = np.arange(self.samples) # for batching, we need the repeats.
-            # If we do repeats, when we concatonate with RGB, RGB is limited to the original set
-            # So we just take the original points and concat and get rid of all duplicates
 
         point_count = t_samples # this helps us figure out batching
 
