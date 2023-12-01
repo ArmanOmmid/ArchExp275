@@ -62,10 +62,7 @@ class PoseData:
             self.object_cache = True # Why Not
         if self.object_cache not in [False, None]:
             if self.object_cache is True: # We may have gotten it from a split
-                if not os.path.exists(self.object_cache_path):
-                    self.make_object_cache()
-                else:
-                    self.object_cache = np.load(self.object_cache_path, allow_pickle=True)
+                self.make_object_cache()
         else:
             self.object_cache = None
 
@@ -90,13 +87,14 @@ class PoseData:
         return self.objects[object_id]
     
     def make_object_cache(self):
-        object_infos = []
-        object_meshes = {}
-        for i in range(len(self.objects)):
-            object_infos.append(self.get_info(i))
-            object_meshes[f"{i}"] = self.get_mesh(i)
-        np.savez(os.path.join(self.object_cache_path), **object_meshes, info=np.array(object_infos))
-        self.object_cache = np.load(self.object_cache_path, allow_pickle=True)
+        if not os.path.exists(self.object_cache_path):
+            object_infos = []
+            object_meshes = {}
+            for i in range(len(self.objects)):
+                object_infos.append(self.get_info(i))
+                object_meshes[f"{i}"] = self.get_mesh(i)
+            np.savez(os.path.join(self.object_cache_path), **object_meshes, info=np.array(object_infos))
+        self.object_cache = np.load(self.object_cache_path, allow_pickle=True, mmap_mode="r")
 
     def organize_data(self, data_path):
         data = {}
@@ -229,6 +227,9 @@ class PoseData:
                 split_nested_data[level][scene][variant] = self.data[key]
 
         return PoseData(self.data_path, self.models_path, split_processed_data=(self.objects, split_data, split_nested_data, self.object_cache))
+
+    def __del__(self):
+        self.object_cache.close()
 
     def npz(self, npz_dataset_path, levels=None, split=None):
         

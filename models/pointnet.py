@@ -134,4 +134,4 @@ class PointNet(_Network):
 
         # x = x.view(-1, 3, 4)
 
-        return x, T1, T2
+        return x, (T1, T2)

@@ -137,30 +137,48 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         scene = self.data[key]
 
-        color = scene["color"] * 255
-        depth = scene["depth"] / 1000
+        color = scene["color"]
+        depth = scene["depth"]
         # label = scene["label"]
         mask = scene["label"] == obj_id
         meta = scene["meta"][()]
 
+
         (color, depth, mask), scale, translate = crop_and_resize_multiple(
             (color, depth, mask), 
             mask, target_size=self.resize, margin=self.margin, aspect_ratio=self.aspect_ratio)
+        
+        color = color.astype(np.float32) / 255
+        depth = depth.astype(np.float32) / 1000
+
+        color = np.transpose(color, (2, 0, 1)) # H W C -> C H W # NOTE : Do this after crop/resize
 
         target_pcd = back_project(depth, meta, mask, (scale, translate)).astype(np.float32)
 
         t_samples = len(target_pcd)
         if t_samples > self.samples:
-            sample_indices = np.linspace(start=0, stop=len(target_pcd)-1, num=self.samples, dtype=int)
-            target_pcd = target_pcd[sample_indices]
-        elif t_samples < self.samples:
-            repeats = np.ceil(self.samples / t_samples).astype(int)
-            target_pcd = np.repeat(target_pcd, repeats, axis=0)
-            target_pcd = target_pcd[:self.samples]
+            point_indices = np.linspace(start=0, stop=len(target_pcd)-1, num=self.samples, dtype=int)
+            target_pcd = target_pcd[point_indices] # Sa
+        elif t_samples <= self.samples:
+            # point_indices = np.arange(t_samples) # Get true point indices, ignoring repeats
+            if t_samples < self.samples:
+                point_indices = np.arange(t_samples)
+                repeats = np.ceil(self.samples / t_samples).astype(int)
+                point_indices = np.repeat(point_indices, repeats, axis=0)[:self.samples]
+                target_pcd = target_pcd[point_indices]
+            else:
+                point_indices = np.arange(self.samples) # for batching, we need the repeats.
             # If we do repeats, when we concatonate with RGB, RGB is limited to the original set
             # So we just take the original points and concat and get rid of all duplicates
+
+        point_count = t_samples # this helps us figure out batching
 
         source_pcd = self.sample_source_pcd(obj_id) * meta["scales"][obj_id]
         pose = meta["poses_world"][obj_id][:3, :] # 4x4 -> 3x4
 
-        return source_pcd, target_pcd, color, depth, mask, pose
+        mask_info = (mask, point_count, point_indices)
+
+        return source_pcd, target_pcd, color, depth, mask_info, pose
+
+    def __del__(self):
+        

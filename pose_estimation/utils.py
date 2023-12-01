@@ -35,6 +35,7 @@ def back_project(depth, meta, mask=None, transforms=None, world=True):
         if translate is not None:
             u = u + translate[0]
             v = v + translate[1]
+    print(depth.shape)
 
     uv1 = np.stack([u + 0.5, v + 0.5, np.ones_like(depth)], axis=-1)
     points = uv1 @ np.linalg.inv(intrinsic).T * depth[..., None]  # [H, W, 3]
