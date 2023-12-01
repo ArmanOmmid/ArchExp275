@@ -7,7 +7,7 @@ import trimesh
 
 import torch
 
-from .utils import back_project, fps, crop_and_resize
+from .utils import back_project, fps, crop_and_resize, crop_and_resize_multiple
 from .pose_data import PoseData
 
 class PoseDataNPZ():
@@ -102,7 +102,7 @@ class PoseDataNPZ():
 class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __init__(self, npz_data_path, data_path=None, models_path=None, 
                  levels=None, split=None, samples=30_000, fps_downsample=False,
-                 resize=(432, 768), aspect_ratio=True, margin=12):
+                 resize=(432, 768), aspect_ratio=True, margin=0):
 
         self.data = PoseDataNPZ(npz_data_path, data_path, models_path, levels, split)
         self.num_classes = len(self.data.info)
@@ -110,8 +110,8 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         self.fps_downsample = fps_downsample
 
         self.resize = resize
-        self.aspect_ratio = True
-        self.margin = 12
+        self.aspect_ratio = aspect_ratio
+        self.margin = margin
 
         self.source_pcd_cache = [None] * self.num_classes
 
@@ -138,20 +138,15 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         scene = self.data[key]
 
-        # color = scene["color"] * 255
-        # depth = scene["depth"] / 1000
-        # label = scene["label"]
-
+        color = scene["color"] * 255
+        depth = scene["depth"] / 1000
+        label = scene["label"]
+        mask = scene["label"] == obj_id
         meta = scene["meta"][()]
 
-        mask = scene["label"] == obj_id
-
-        color = crop_and_resize(scene["color"], mask, 
-                                    target_size=self.resize, margin=self.margin, aspect_ratio=self.aspect_ratio)
-        depth = crop_and_resize(scene["depth"], mask,
-                                    target_size=self.resize, margin=self.margin, aspect_ratio=self.aspect_ratio)
-        label = crop_and_resize(scene["depth"], mask,
-                                    target_size=self.resize, margin=self.margin, aspect_ratio=self.aspect_ratio)
+        (color, depth, label, mask) = crop_and_resize_multiple(
+            (color, depth, label, mask), 
+            mask, target_size=self.resize, margin=self.margin, aspect_ratio=self.aspect_ratio)
 
         target_pcd = back_project(scene["depth"] / 1000, meta, mask).astype(np.float32)
         
