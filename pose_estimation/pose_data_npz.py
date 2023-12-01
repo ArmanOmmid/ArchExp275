@@ -172,24 +172,19 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         color = np.transpose(color, (2, 0, 1)) # H W C -> C H W # NOTE : Do this after crop/resize
 
-        target_pcd, indices = back_project(depth, meta, mask, (scale, translate), samples=self.samples)
+        target_pcd, mask_indices = back_project(depth, meta, mask, (scale, translate), samples=self.samples)
         target_pcd = target_pcd.astype(np.float32)
 
         t_samples = len(target_pcd)
-        print(indices.shape)
+
         if t_samples < self.samples:
-            print(indices.shape)
             repeats = np.ceil(self.samples / t_samples).astype(int)
-            indices = np.repeat(indices, repeats, axis=0)[:self.samples]
-            target_pcd = target_pcd[indices]
-            print(target_pcd.shape)
-
-
-        point_count = t_samples # this helps us figure out batching
+            mask_indices = np.repeat(mask_indices.T, repeats, axis=0)[:self.samples].T # REMEMBER, these correspond to the 2D MASK!
+            target_pcd = np.repeat(target_pcd, repeats, axis=0)[:self.samples]
 
         source_pcd = self.sample_source_pcd(obj_id) * meta["scales"][obj_id]
         pose = meta["poses_world"][obj_id][:3, :] # 4x4 -> 3x4
 
-        mask_info = (mask, indices)
+        mask_info = (mask, mask_indices)
 
         return source_pcd, target_pcd, color, depth, mask_info, pose

@@ -53,7 +53,7 @@ def sample_indices(v, u, max_samples):
     combined_indices = np.column_stack((v, u))
     total_indices = len(combined_indices)
     if max_samples is None or total_indices <= max_samples:
-        return combined_indices
+        return combined_indices.T
     
     sample_positions = np.linspace(0, total_indices - 1, num=max_samples, dtype=int)
     sample_indices = combined_indices[sample_positions]
