@@ -101,7 +101,7 @@ class PoseDataNPZ():
 
 class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __init__(self, npz_data_path, data_path=None, models_path=None, 
-                 levels=None, split=None, samples=20_000, fps_downsample=False):
+                 levels=None, split=None, samples=30_000, fps_downsample=False):
         
 
         self.data = PoseDataNPZ(npz_data_path, data_path, models_path, levels, split)
