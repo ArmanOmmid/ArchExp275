@@ -11,6 +11,9 @@ from .utils import back_project, fps, crop_and_resize, crop_and_resize_multiple
 from .pose_data import PoseData
 
 class PoseDataNPZ():
+
+    _npz_handlers_cache = {}
+
     def __init__(self, npz_data_path, data_path=None, models_path=None, levels=None, split=None, make_object_cache=False) -> None:
         
         self.npz_data_path = npz_data_path
@@ -26,7 +29,10 @@ class PoseDataNPZ():
         
         self.objects_npz_path = os.path.join(npz_data_path, "objects.npz")
         if os.path.exists(self.objects_npz_path):
-            self.objects = np.load(os.path.join(npz_data_path, "objects.npz"), allow_pickle=True)
+            # Cache Handlers
+            if scene_path not in self._npz_handlers_cache:
+                self._npz_handlers_cache[self.objects_npz_path] = np.load(os.path.join(npz_data_path, "objects.npz"), allow_pickle=True, mmap_mode="r")
+            self.objects = self._npz_handlers_cache[self.objects_npz_path]
             self.info = self.objects["info"] # objects.csv
         else:
             self.info = self.pose_data.objects
@@ -45,7 +51,12 @@ class PoseDataNPZ():
             if levels is not None and l not in levels:
                 continue
             scene_path = os.path.join(npz_data_path, "scenes", f"{l}-{s}-{v}.npz")
-            self.data[key] = np.load(scene_path, allow_pickle=True) # NPZ Generator object 
+
+            # Cache Handlers
+            if scene_path not in self._npz_handlers_cache:
+                self._npz_handlers_cache[scene_path] = np.load(scene_path, allow_pickle=True, mmap_mode="r") # NPZ Generator object 
+            self.data[key] = self._npz_handlers_cache[scene_path]
+
             # color, depth, label, meta
 
         self.keylist = list(self.data.keys())
@@ -98,6 +109,14 @@ class PoseDataNPZ():
     
     def meta(self, key):
         return self.data[key]["meta"][()]
+    
+    def __del__(self):
+        try:
+            self.objects.close()
+        except:
+            pass
+        for loader in self.data.values():
+            loader.close()
 
 class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __init__(self, npz_data_path, data_path=None, models_path=None, 
@@ -179,6 +198,3 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         mask_info = (mask, point_count, point_indices)
 
         return source_pcd, target_pcd, color, depth, mask_info, pose
-
-    def __del__(self):
-        

@@ -42,6 +42,8 @@ class PoseData:
     CSV_FILENAME = "objects_v1.csv"
     DATA_FOLDERNAME = "v2.2"
 
+    _npz_handlers_cache = {}
+
     def __init__(self, data_path, models_path, make_object_cache=False, split_processed_data=None) -> None:
 
         self.data_path = data_path
@@ -93,8 +95,11 @@ class PoseData:
             for i in range(len(self.objects)):
                 object_infos.append(self.get_info(i))
                 object_meshes[f"{i}"] = self.get_mesh(i)
-            np.savez(os.path.join(self.object_cache_path), **object_meshes, info=np.array(object_infos))
-        self.object_cache = np.load(self.object_cache_path, allow_pickle=True, mmap_mode="r")
+            np.savez(self.object_cache_path, **object_meshes, info=np.array(object_infos))
+        
+        if self.object_cache_path not in self._npz_handlers_cache:
+            self._npz_handlers_cache[self.object_cache_path] = np.load(self.object_cache_path, allow_pickle=True, mmap_mode="r")
+        self.object_cache = self._npz_handlers_cache[self.object_cache_path]
 
     def organize_data(self, data_path):
         data = {}
@@ -229,7 +234,10 @@ class PoseData:
         return PoseData(self.data_path, self.models_path, split_processed_data=(self.objects, split_data, split_nested_data, self.object_cache))
 
     def __del__(self):
-        self.object_cache.close()
+        try:
+            self.object_cache.close()
+        except:
+            pass
 
     def npz(self, npz_dataset_path, levels=None, split=None):
         
