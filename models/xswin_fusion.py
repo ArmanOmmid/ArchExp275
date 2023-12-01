@@ -1,6 +1,7 @@
 from typing import *
 from functools import partial
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -32,25 +33,25 @@ class XSwinFusion(_Network):
         
         self.point_net = PointNet(out_channels=feature_dims)
 
-    def forward(self, pcd, rgb, mask_info):
-
-        mask, indices = mask_info
-
-        print(mask.shape, indices.shape)
+    def forward(self, pcd, rgb, mask_indices):
         
         rgb = self.segment_net(rgb)
 
         pcd, transforms = self.point_net(pcd)
 
-        rgb = torch.permute(rgb, (0, 2, 3, 1)) # B C H W -> B H W C
+        rgb = torch.permute(rgb, (0, 2, 3, 1)) # B C H W -> B H W C (channel last for masking)
+
+        batch_indices = np.arange(pcd.size(0))[:, None]
+        row_indices = mask_indices[:, 0, :]
+        col_indices = mask_indices[:, 1, :]
+
+        rgb = rgb[batch_indices, row_indices, col_indices] # RGB POINT CLOUD
+        rgb = torch.permute(rgb, (0, 2, 1)) # B, L, C -> B, C, L
 
         print(rgb.shape, pcd.shape)
 
-        b, v, u = torch.nonzero(mask, as_tuple=True)
-        rgb_pcd = rgb[b, v, u]
+        x = torch.cat((rgb, pcd), dim=-2) # concat along channel dim (B, C, L)
 
-        print(rgb_pcd.shape)
+        print(x.shape)
 
-        
-
-        return rgb, pcd, transforms
+        return x

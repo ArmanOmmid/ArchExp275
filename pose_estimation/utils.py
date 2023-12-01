@@ -30,6 +30,8 @@ def back_project(depth, meta, mask=None, transforms=None, samples=None, world=Tr
         v, u = sample_indices(v, u, samples)
         depth = depth[v, u]
 
+    mask_indices = np.array([v, u],dtype=int)
+
     if transforms is not None:
         scale, translate = transforms
         if scale is not None:
@@ -43,7 +45,7 @@ def back_project(depth, meta, mask=None, transforms=None, samples=None, world=Tr
     points = uv1 @ np.linalg.inv(intrinsic).T * depth[..., None]  # [H, W, 3]
     if world:
         points = (points - T_extrinsic) @ R_extrinsic
-    return points, np.array([v, u])
+    return points, mask_indices
 
     # Sort indices to ensure row-major order # NOTE : Doesn't seem to change anything
     # sorted_indices = np.lexsort((u, v))
