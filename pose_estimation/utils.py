@@ -29,12 +29,12 @@ def back_project(depth, meta, mask=None, transforms=None, world=True):
 
     if transforms is not None:
         scale, translate = transforms
-        if translate is not None:
-            u = u + translate[0]
-            v = v + translate[1]
         if scale is not None:
             u = u / scale[0]
             v = v / scale[1]
+        if translate is not None:
+            u = u + translate[0]
+            v = v + translate[1]
 
     uv1 = np.stack([u + 0.5, v + 0.5, np.ones_like(depth)], axis=-1)
     points = uv1 @ np.linalg.inv(intrinsic).T * depth[..., None]  # [H, W, 3]
@@ -112,7 +112,8 @@ def crop_and_resize(feature_map, mask, target_size=None, margin=12, aspect_ratio
             feature_map = feature_map.astype(np.uint8)
 
         original_crop_size = (max_col - min_col + 1, max_row - min_row + 1)
-        feature_map = cv2.resize(feature_map, (T_W, T_H), interpolation=cv2.INTER_AREA)
+        # Its CRITICAL for depth maps for inerpolation to be INTER_NEAREST and not INTER_AREA
+        feature_map = cv2.resize(feature_map, (T_W, T_H), interpolation=cv2.INTER_NEAREST)
 
         if dtype is not None:
             feature_map = feature_map.astype(dtype)
