@@ -101,12 +101,13 @@ class PoseDataNPZ():
 
 class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __init__(self, npz_data_path, data_path=None, models_path=None, 
-                 levels=None, split=None, mesh_samples=20_000):
+                 levels=None, split=None, samples=20_000, fps_downsample=False):
         
 
         self.data = PoseDataNPZ(npz_data_path, data_path, models_path, levels, split)
         self.num_classes = len(self.data.info)
-        self.mesh_samples = mesh_samples
+        self.samples = samples
+        self.fps_downsample = fps_downsample
 
         self.source_pcd_cache = [None] * self.num_classes
 
@@ -119,11 +120,11 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.data)
     
-    def sample_source_pcd(self, obj_id, n):
+    def sample_source_pcd(self, obj_id, n=None):
         if self.source_pcd_cache[obj_id] is None:
-            n = n if self.mesh_samples is None else self.mesh_samples
+            n = n if self.samples is None and n is not None else self.samples
             self.source_pcd_cache[obj_id] = \
-                self.data.sample_mesh(obj_id, self.mesh_samples).astype(np.float32)
+                self.data.sample_mesh(obj_id, self.samples).astype(np.float32)
             
         return self.source_pcd_cache[obj_id]
         
@@ -140,6 +141,19 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         target_pcd = back_project(scene["depth"] / 1000, meta, 
                                   scene["label"] == obj_id).astype(np.float32)
+        
+        t_samples = len(target_pcd)
+        if self.samples is not None:
+            if t_samples > self.samples: # This is an unlikely case. Fps can be slow but this still might be fine.
+                if self.fps_downsample:
+                    target_pcd = fps(target_pcd, self.samples)
+                else:
+                    target_pcd = target_pcd[:self.samples]
+            elif t_samples < self.samples:
+                repeats = np.ceil(self.samples / t_samples).astype(int)
+                target_pcd = np.repeat(target_pcd, repeats, axis=0)
+                target_pcd = target_pcd[:self.samples]
+
         source_pcd = self.sample_source_pcd(obj_id, len(target_pcd)) * meta["scales"][obj_id]
         pose = meta["poses_world"][obj_id]
 

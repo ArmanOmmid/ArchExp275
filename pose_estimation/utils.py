@@ -45,8 +45,8 @@ def back_project(depth, meta, mask=None, world=True):
 
 def fps(points, count):
     # Implementation derived from slides
-    point_set = np.zeros((count, 3))
-    distances = np.ones(points.shape[0]) * np.inf
+    point_set = np.zeros((count, 3), dtype=np.float32)
+    distances = np.ones(points.shape[0], dtype=np.float32) * np.inf
     for i in range(count):
         point_set[i] = points[np.argmax(distances)]
         distances = np.minimum(distances, ((points - point_set[i])**2).sum(-1))
