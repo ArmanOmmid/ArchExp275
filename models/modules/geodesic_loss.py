@@ -12,7 +12,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
         self.PCD_Loss = PCD_Loss
         self.PCD_weight = PCD_weight
         if self.PCD_Loss:
-            self.PCD_criterion = PointCloudMSELoss(type="pose", weight=PCD_weight)
+            self.PCD_criterion = PointCloudMSELoss(target_type="pose", weight=PCD_weight)
         
         self.SO_Loss = SO_Loss
         if self.SO_Loss:
