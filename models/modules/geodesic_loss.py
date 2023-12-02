@@ -94,7 +94,9 @@ class PointCloudMSELoss(_Loss):
 
         if target == "pose":
             # In this case, target is the ground truth pose
-            target = torch.bmm(source, target.transpose(-2, -1)) + T.unsqueeze(-2)
+            R = target[:, :, :3]
+            T = target[:, :, 3]
+            target = torch.bmm(source, R.transpose(-2, -1)) + T.unsqueeze(-2)
         # Otherwise, target is a point cloud (WHICH REQUIRES CORRESPONDENCES)
 
         loss = F.mse_loss(source_transformed, target)
