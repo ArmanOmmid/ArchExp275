@@ -7,6 +7,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.ops.misc import Permute
 
+import torchvision.models.segmentation as segmentation
+
 from ._network import _Network
 from .xswin import XNetSwinTransformer
 from .pointnet import PointNet
@@ -22,19 +24,26 @@ residual_cross_attention = True
 smooth_conv = True
 
 class XSwinFusion(_Network):
-    def __init__(self, num_points, feature_dims=64, swin_embed_dims=64, resize=None, xswin_weights=None, **kwargs):
+    def __init__(self, num_points, feature_dims=64, swin_embed_dims=64, resize=None, xswin_weights=None, pretrained=False, **kwargs):
         super().__init__(**kwargs)
 
         head = swin_embed_dims // 16
         num_heads = [head*(2**i) for i, _ in enumerate(depths)]
 
-        self.segment_net = XNetSwinTransformer(patch_size=patch_size, embed_dim=swin_embed_dims, 
-                            depths=depths, num_heads=num_heads, window_size=window_size, 
-                            num_classes=feature_dims, global_stages=global_stages, 
-                            input_size=resize, final_downsample=final_downsample, 
-                            residual_cross_attention=residual_cross_attention,
-                            smooth_conv=smooth_conv, weights=xswin_weights,
-                           )
+        self.pretrained = pretrained
+        if pretrained:
+            self.segment_net = segmentation.fcn_resnet50(pretrained=True)
+            self.segment_net.classifier[4] = nn.Conv2d(512, feature_dims, kernel_size=(1,1))
+            if self.segment_net.aux_classifier is not None:
+                self.segment_net.aux_classifier[4] = nn.Conv2d(256, feature_dims, kernel_size=(1,1))
+        else:
+            self.segment_net = XNetSwinTransformer(patch_size=patch_size, embed_dim=swin_embed_dims, 
+                                depths=depths, num_heads=num_heads, window_size=window_size, 
+                                num_classes=feature_dims, global_stages=global_stages, 
+                                input_size=resize, final_downsample=final_downsample, 
+                                residual_cross_attention=residual_cross_attention,
+                                smooth_conv=smooth_conv, weights=xswin_weights,
+                            )
         
         self.point_net = PointNet(out_channels=feature_dims, embed_dim=feature_dims)
 
@@ -128,6 +137,8 @@ class XSwinFusion(_Network):
         batch_indices = np.arange(pcd.size(0))[:, None]
         
         rgb = self.segment_net(rgb)
+        if self.pretrained:
+            rgb = rgb["out"]
         pcd, transforms = self.point_net(pcd)
         rgb = torch.permute(rgb, (0, 2, 3, 1)) # B C H W -> B H W C (channel last for masking)
 
