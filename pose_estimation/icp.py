@@ -2,11 +2,11 @@ import trimesh
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
-def randSO3():
+def randSO3(weight=1.0):
     axis = np.random.rand(3) - 0.5
     axis /= np.linalg.norm(axis)
 
-    angle = np.random.rand() * 2 * np.pi
+    angle = ((np.random.rand() * 2 * np.pi) - np.pi) * weight
 
     K = np.array([[0, -axis[2], axis[1]],
                   [axis[2], 0, -axis[0]],

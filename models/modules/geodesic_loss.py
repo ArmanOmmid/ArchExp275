@@ -54,7 +54,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
             cosine_term = torch.clamp(cosine_term, -0.9999, 0.9999)  # Numerical stability
             symmetry_losses = torch.acos(cosine_term)  # Shape: (B, N)
             # Get minimum loss and compute mean
-            rotation_loss = torch.min(symmetry_losses, dim=1).values.mean()
+            rotation_loss = torch.min(symmetry_losses, dim=-1).values.mean()
 
         losses.append(rotation_loss)
         losses.append(translation_loss)
