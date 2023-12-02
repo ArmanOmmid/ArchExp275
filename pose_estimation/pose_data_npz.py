@@ -182,7 +182,9 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
             mask_indices = np.repeat(mask_indices.T, repeats, axis=0)[:self.samples].T # REMEMBER, these correspond to the 2D MASK!
             target_pcd = np.repeat(target_pcd, repeats, axis=0)[:self.samples]
 
-        source_pcd = self.sample_source_pcd(obj_id) * meta["scales"][obj_id]
         pose = meta["poses_world"][obj_id][:3, :] # 4x4 -> 3x4
 
-        return source_pcd, target_pcd, color, depth, mask_indices, pose
+        # source_pcd and depth not needed for now
+        # source_pcd = self.sample_source_pcd(obj_id) * meta["scales"][obj_id]
+
+        return target_pcd, color, mask_indices, pose
