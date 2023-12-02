@@ -264,6 +264,7 @@ class PoseData:
 
             color = scene["color"]() # normalization 255
             depth = scene["depth"]() # normalization 1000
+            print(scene.keys())
             meta = scene["meta"]
             try:
                 label = scene["label"]()
