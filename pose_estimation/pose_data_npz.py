@@ -7,7 +7,7 @@ import trimesh
 
 import torch
 
-from .utils import back_project, crop_and_resize, crop_and_resize_multiple
+from .utils import back_project, crop_and_resize_multiple, enumerate_symmetries
 from .pose_data import PoseData
 
 class PoseDataNPZ():
@@ -121,7 +121,9 @@ class PoseDataNPZ():
 class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __init__(self, npz_data_path, data_path=None, models_path=None, 
                  levels=None, split=None, samples=8_000,
-                 resize=(144, 256), aspect_ratio=True, margin=8): # Helps bigger images, worse on small images
+                 resize=(144, 256), aspect_ratio=True, margin=8,# Helps bigger images, worse on small images
+                 symmetry_pad=64, 
+                 ): 
 
         assert samples is not None, "No Longer Supporting Variable Samples"
 
@@ -134,6 +136,8 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         self.margin = margin
 
         self.source_pcd_cache = [None] * self.num_classes
+        self.symmetry_cache = [None] * self.num_classes
+        self.symmetry_pad = symmetry_pad
 
         self._data = []
 
@@ -150,6 +154,15 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
                 self.data.sample_mesh(obj_id, self.samples).astype(np.float32)
             
         return self.source_pcd_cache[obj_id]
+    
+    def get_symmetry(self, obj_id):
+        if self.symmetry_cache[obj_id] is None:
+            sym_pad = torch.eye(3).unsqueeze(0).repeat(self.symmetry_pad, 1, 1)
+            sym = enumerate_symmetries(self.data.get_info(obj_id)["geometric_symmetry"])
+            sym_pad[:len(sym), :, :] = torch.cat(sym) # convert from list
+            self.symmetry_cache[obj_id] = sym_pad.float()
+
+        return self.symmetry_cache[obj_id]
         
     def __getitem__(self, i):
         key, obj_id = self._data[i]
@@ -189,8 +202,9 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         sym = self.data.info[obj_id]["geometric_symmetry"]
 
-        # source_pcd and depth not needed for now
         source_pcd = self.sample_source_pcd(obj_id) * meta["scales"][obj_id]
+
+        sym = self.get_symmetry(obj_id)
 
         return source_pcd, target_pcd, color, mask_indices, pose, sym
 

@@ -70,9 +70,9 @@ def enumerate_symmetries(sym_info, inf=24):
     basis = {"x" : torch.tensor([[1, 0, 0]]), "y" : torch.tensor([[0, 1, 0]]), "z" : torch.tensor([[0, 0, 1]])}
     all_symmetries = []
     matrices = {
-        "x" : [torch.eye(3)],
-        "y" : [torch.eye(3)],
-        "z": [torch.eye(3)]
+        "x" : [torch.eye(3).unsqueeze(0)],
+        "y" : [torch.eye(3).unsqueeze(0)],
+        "z": [torch.eye(3).unsqueeze(0)]
     }
     if sym_info == "no":
         return [torch.eye(3)]
@@ -87,7 +87,7 @@ def enumerate_symmetries(sym_info, inf=24):
     for sx, sy, sz in itertools.product(*list(matrices.values())):
         all_symmetries.append(sx @ sy @ sz)
 
-    return all_symmetries
+    return all_symmetries # Pad with identities (max 64)
 
 def crop_and_resize(feature_map, mask, target_size=None, margin=12, aspect_ratio=True, mask_fill=False):
 
