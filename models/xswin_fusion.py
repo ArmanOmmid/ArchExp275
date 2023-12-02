@@ -22,7 +22,7 @@ residual_cross_attention = True
 smooth_conv = True
 
 class XSwinFusion(_Network):
-    def __init__(self, feature_dims=64, swin_embed_dims=64, resize=None, xswin_weights=None, **kwargs):
+    def __init__(self, num_points, feature_dims=64, swin_embed_dims=64, resize=None, xswin_weights=None, **kwargs):
         super().__init__(**kwargs)
 
         head = swin_embed_dims // 16
@@ -48,27 +48,39 @@ class XSwinFusion(_Network):
             LambdaModule(lambda x: torch.mean(x, 2, keepdim=True)) # Average Pooling
         )
 
-        self.final = nn.Sequential(
-            Permute([0, 2, 1]),
+        self.mix = nn.Sequential(
+            Permute([0, 2, 1]), # B L C 
             ViTEncoderBlock(num_heads=3, hidden_dim=feature_dims*3, mlp_dim=feature_dims*3,
                             dropout=0.0, attention_dropout=0.0,
                             norm_layer= partial(nn.LayerNorm, eps=1e-6)),
-            Permute([0, 2, 1]),
+            Permute([0, 2, 1]), # B C L
             nn.LeakyReLU(),
             nn.Conv1d(feature_dims*3, feature_dims, 1),
             nn.BatchNorm1d(feature_dims),
             nn.LeakyReLU(),
-            Permute([0, 2, 1]),
+            Permute([0, 2, 1]), # B L C
             ViTEncoderBlock(num_heads=4, hidden_dim=feature_dims, mlp_dim=feature_dims,
                             dropout=0.0, attention_dropout=0.0,
                             norm_layer=partial(nn.LayerNorm, eps=1e-6)),
-            Permute([0, 2, 1]),
+            Permute([0, 2, 1]), # B C L
             nn.LeakyReLU(),
             nn.Conv1d(feature_dims, feature_dims, 1),
             nn.BatchNorm1d(feature_dims),
         )
 
-        self.pose = nn.Linear(feature_dims, 12)
+        self.final_max = LambdaModule(lambda x: torch.max(x, 2, keepdim=True)[0])
+        self.final_mean = LambdaModule(lambda x: torch.mean(x, 2, keepdim=True))
+
+        self.pose = nn.Sequential(
+            nn.Linear(feature_dims+feature_dims, feature_dims),
+            nn.BatchNorm1d(feature_dims),
+            nn.LeakyReLU(),
+            nn.Linear(feature_dims, feature_dims),
+            nn.BatchNorm1d(feature_dims),
+            nn.LeakyReLU(),
+            nn.Linear(feature_dims, 12),
+        )
+
 
     def forward(self, pcd, rgb, mask_indices):
         
@@ -85,8 +97,6 @@ class XSwinFusion(_Network):
         rgb = rgb[batch_indices, row_indices, col_indices] # RGB POINT CLOUD
         rgb = torch.permute(rgb, (0, 2, 1)) # B, L, C -> B, C, L
 
-        print(rgb.shape, pcd.shape)
-
         x = torch.cat((rgb, pcd), dim=-2) # concat along channel dim (B, C, L)
 
         g = self.global_net(x)
@@ -94,8 +104,12 @@ class XSwinFusion(_Network):
 
         x = torch.cat((x, g), dim=-2) # B, C1 + C2, L
 
-        x = self.final(x)
+        x = self.mix(x)
 
+        x_max = self.final_max(x).squeeze(-1)
+        x_mean = self.final_mean(x).squeeze(-1)
+
+        x = torch.cat((x_max, x_mean), dim=-1)
         x = self.pose(x)
 
         x = x.view(-1, 3, 4)
