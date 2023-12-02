@@ -180,9 +180,11 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         color = scene["color"]
         depth = scene["depth"]
-        # label = scene["label"]
+        meta = self.data.meta(key)
+        label = self.data.label(key)
+        if label is None:
+            
         mask = scene["label"] == obj_id
-        meta = scene["meta"][()]
 
 
         (color, depth, mask), scale, translate = crop_and_resize_multiple(
