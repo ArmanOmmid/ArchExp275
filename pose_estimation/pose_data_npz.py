@@ -108,10 +108,12 @@ class PoseDataNPZ():
         return trimesh.sample.sample_surface(self.get_mesh(obj_id), n)[0] # samples, faces
     
     def meta(self, key):
-        return self.data[key]["meta"][()]
+        "Easily get meta info"
+        return self[key]["meta"][()]
 
     def label(self, key):
-        label = self.data[key]["label"]
+        "Saftely Get Label"
+        label = self[key]["label"]
         if type(label.dtype).__name__ == "dtype[object_]":
             return None
         else:
