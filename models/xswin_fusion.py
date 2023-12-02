@@ -95,4 +95,4 @@ class XSwinFusion(_Network):
 
         x = x.view(-1, 3, 4)
 
-        return x    
+        return x, transforms

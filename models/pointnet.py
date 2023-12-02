@@ -63,7 +63,7 @@ class PointNet(_Network):
             nn.Conv1d(3, embed_dim, 1),
             nn.BatchNorm1d(embed_dim),
             nn.LeakyReLU(),
-            nn.Conv1d(3, embed_dim, 1),
+            nn.Conv1d(embed_dim, embed_dim, 1),
             nn.BatchNorm1d(embed_dim),
             nn.LeakyReLU(),
         )
