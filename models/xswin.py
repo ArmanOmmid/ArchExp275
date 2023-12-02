@@ -58,6 +58,8 @@ class XNetSwinTransformer(_Network):
         weights=None,
     ):
         super().__init__()
+
+        print(global_stages)
         
         if input_size is None and global_stages > 0:
             print("WARNING: Not Providing The Argument 'input_size' Means Global ViT Blocks will NOT Have Positional Embedings")
