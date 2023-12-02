@@ -82,25 +82,11 @@ class XSwinFusion(_Network):
             nn.BatchNorm1d(feature_dims),
         )
 
-        # self.final_max = LambdaModule(lambda x: torch.max(x, 2, keepdim=True)[0])
-        # self.final_mean = LambdaModule(lambda x: torch.mean(x, 2, keepdim=True))
-
-        # self.pose = nn.Sequential(
-        #     nn.Linear(feature_dims+feature_dims, feature_dims),
-        #     nn.BatchNorm1d(feature_dims),
-        #     nn.LeakyReLU(),
-        #     nn.Linear(feature_dims, feature_dims),
-        #     nn.BatchNorm1d(feature_dims),
-        #     nn.LeakyReLU(),
-        #     nn.Linear(feature_dims, 12),
-        # )
-
         representation = [
                 nn.Conv1d(16, 8, 1),
                 nn.BatchNorm1d(8),
                 nn.LeakyReLU(),
                 nn.Conv1d(8, 4, 1),
-                nn.BatchNorm1d(4),
              ] if self.quaternion else [nn.Conv1d(16, 9, 1)]
 
         self.rotation = nn.Sequential(
@@ -172,12 +158,6 @@ class XSwinFusion(_Network):
 
         x = self.mix(x)
 
-        # x_max = self.final_max(x).squeeze(-1)
-        # x_mean = self.final_mean(x).squeeze(-1)
-        # x = torch.cat((x_max, x_mean), dim=-1)
-        # x = self.pose(x)
-        # x = x.view(-1, 3, 4)
-
         B = np.arange(pcd.size(0))
         R = self.rotation(x)
         T = self.translation(x)
@@ -186,8 +166,7 @@ class XSwinFusion(_Network):
 
         R = R[B, C, :]
         if self.quaternion:
-            R = torch.nn.functional.normalize(R, p=2, dim=-1)
-            R = conversions.quaternion_to_rotation_matrix(R)
+            R = conversions.quaternion_to_rotation_matrix(R) # It's automatically normalized
         else:
             R = R.view(-1, 3, 3)
 
