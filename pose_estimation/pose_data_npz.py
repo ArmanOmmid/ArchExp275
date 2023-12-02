@@ -195,4 +195,5 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 def predict(model, points, color, mask_info):
     model.eval()
     with torch.no_grad():
-        prediction = model(points, color, mask_info)
+        prediction, transforms = model(points, color, mask_info)
+    return prediction

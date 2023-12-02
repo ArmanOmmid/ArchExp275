@@ -9,6 +9,8 @@ from torchvision.ops.misc import Permute
 
 import torchvision.models.segmentation as segmentation
 
+import kornia.geometry.conversions as conversions
+
 from ._network import _Network
 from .xswin import XNetSwinTransformer
 from .pointnet import PointNet
@@ -24,11 +26,13 @@ residual_cross_attention = True
 smooth_conv = True
 
 class XSwinFusion(_Network):
-    def __init__(self, num_points, feature_dims=64, swin_embed_dims=64, resize=None, xswin_weights=None, pretrained=False, **kwargs):
+    def __init__(self, num_points, feature_dims=64, swin_embed_dims=64, resize=None, xswin_weights=None, pretrained=False, quaternion=False, **kwargs):
         super().__init__(**kwargs)
 
         head = swin_embed_dims // 16
         num_heads = [head*(2**i) for i, _ in enumerate(depths)]
+
+        self.quaternion = quaternion
 
         self.pretrained = pretrained
         if pretrained:
@@ -100,6 +104,13 @@ class XSwinFusion(_Network):
             nn.Conv1d(16, 16, 1),
             nn.BatchNorm1d(16),
             nn.LeakyReLU(),
+            *(
+                nn.Conv1d(16, 8, 1),
+                nn.BatchNorm1d(8),
+                nn.LeakyReLU(),
+                nn.Conv1d(8, 4, 1),
+                nn.BatchNorm1d(4),
+            ) if self.quaternion else 
             nn.Conv1d(16, 9, 1),
             Permute([0, 2, 1]), # B C L -> B L C
         )
@@ -167,10 +178,15 @@ class XSwinFusion(_Network):
         R = self.rotation(x)
         T = self.translation(x)
         C = self.confidence(x)
-
         C = C.squeeze(-1).argmax(dim=-1)
 
-        R = R[B, C, :].view(-1, 3, 3)
+        R = R[B, C, :]
+        if self.quaternion:
+            R = torch.nn.functional.normalize(R, p=2, dim=-1)
+            R = conversions.quaternion_to_rotation_matrix(R)
+        else:
+            R = R.view(-1, 3, 3)
+
         T = T[B, C, :].unsqueeze(-1)
 
         x = torch.cat((R, T), dim=-1)
