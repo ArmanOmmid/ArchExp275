@@ -7,7 +7,7 @@ import trimesh
 
 import torch
 
-from .utils import back_project, fps, crop_and_resize, crop_and_resize_multiple
+from .utils import back_project, crop_and_resize, crop_and_resize_multiple
 from .pose_data import PoseData
 
 class PoseDataNPZ():
@@ -187,12 +187,12 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         except Exception:
             pose = 0
 
-        print(self.objects["info"][obj_id])
+        sym = self.data.info[obj_id]["geometric_symmetry"]
 
         # source_pcd and depth not needed for now
         source_pcd = self.sample_source_pcd(obj_id) * meta["scales"][obj_id]
 
-        return source_pcd, target_pcd, color, mask_indices, pose
+        return source_pcd, target_pcd, color, mask_indices, pose, sym
 
 def predict(model, points, color, mask_info):
     model.eval()

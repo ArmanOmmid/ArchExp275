@@ -62,14 +62,8 @@ def sample_indices(v, u, max_samples):
 
     return sample_indices.T
 
-def fps(points, count):
-    # Implementation derived from slides
-    point_set = np.zeros((count, 3), dtype=np.float32)
-    distances = np.ones(points.shape[0], dtype=np.float32) * np.inf
-    for i in range(count):
-        point_set[i] = points[np.argmax(distances)]
-        distances = np.minimum(distances, ((points - point_set[i])**2).sum(-1))
-    return point_set
+def enumerate_symmetries():
+    pass
 
 def crop_and_resize(feature_map, mask, target_size=None, margin=12, aspect_ratio=True, mask_fill=False):
 
