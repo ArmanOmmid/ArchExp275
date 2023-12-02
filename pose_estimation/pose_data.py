@@ -264,13 +264,12 @@ class PoseData:
 
             color = scene["color"]() # normalization 255
             depth = scene["depth"]() # normalization 1000
-            print(scene)
             meta = scene["meta"]
-            try:
+            if "label" in scene:
                 label = scene["label"]()
                 meta["unique"] = list(np.unique(label))
                 meta["objects"] = [id for id in meta["unique"] if id < 79]
-            except KeyError:
+            else:
                 label = None
                 meta["unique"] = None
                 meta["objects"] = None
