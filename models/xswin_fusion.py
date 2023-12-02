@@ -12,28 +12,30 @@ from .pointnet import PointNet
 
 from .modules import LambdaModule, ViTEncoderBlock
 
-patch_size = [16, 16] # [4, 4]
-embed_dim = 16 # 64
-depths = [1, 1] # [3, 3, 3]
-num_heads = [1, 2, 4] # [4, 8, 16]
+patch_size = [8, 8] # [4, 4]
+depths = [2, 2, 2] # [3, 3, 3]
 window_size = [4, 4]
-global_stages = 0 # 3
-final_downsample = True
+global_stages = 1
+final_downsample = False
 residual_cross_attention = True
 smooth_conv = True
 
 class XSwinFusion(_Network):
-    def __init__(self, feature_dims=64, resize=None, xswin_weights=None, **kwargs):
+    def __init__(self, feature_dims=64, swin_embed_dims=64, resize=None, xswin_weights=None, **kwargs):
         super().__init__(**kwargs)
 
-        self.segment_net = XNetSwinTransformer(patch_size, embed_dim, depths, 
-                           num_heads, window_size, num_classes=feature_dims,
-                           global_stages=global_stages, input_size=resize,
-                           final_downsample=final_downsample, residual_cross_attention=residual_cross_attention,
-                           smooth_conv=smooth_conv, weights=xswin_weights,
+        head = swin_embed_dims // 16
+        num_heads = [head*(2**i) for i, _ in enumerate(depths)]
+
+        self.segment_net = XNetSwinTransformer(patch_size=patch_size, embed_dim=swin_embed_dims, 
+                            depths=depths, num_heads=num_heads, window_size=window_size, 
+                            num_classes=feature_dims, global_stages=global_stages, 
+                            input_size=resize, final_downsample=final_downsample, 
+                            residual_cross_attention=residual_cross_attention,
+                            smooth_conv=smooth_conv, weights=xswin_weights,
                            )
         
-        self.point_net = PointNet(out_channels=feature_dims)
+        self.point_net = PointNet(out_channels=feature_dims, embed_dim=feature_dims)
 
         self.global_net = nn.Sequential(
             nn.Conv1d(feature_dims*2, feature_dims, 1),
@@ -46,7 +48,7 @@ class XSwinFusion(_Network):
         )
 
         self.final = nn.Sequential(
-            ViTEncoderBlock(num_heads=3, hidden_dim=feature_dims, mlp_dim=feature_dims,
+            ViTEncoderBlock(num_heads=3, hidden_dim=feature_dims*3, mlp_dim=feature_dims*3,
                             dropout=0.0, attention_dropout=0.0,
                             norm_layer= partial(nn.LayerNorm, eps=1e-6)),
             nn.LeakyReLU(),

@@ -7,33 +7,33 @@ from ._network import _Network
 from .modules import LambdaModule
 
 class TNet(nn.Module):
-    def __init__(self, k=3, batch_norm=False, *args, **kwargs) -> None:
+    def __init__(self, k=3, embed_dim=64, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self. k = k
+        self.k = k
         self.permute = Permute([0, 2, 1])
         self.conv = nn.Sequential(
-            nn.Conv1d(k, 64, 1),
-            nn.BatchNorm1d(64),
+            nn.Conv1d(k, embed_dim, 1),
+            nn.BatchNorm1d(embed_dim),
             nn.LeakyReLU(),
-            nn.Conv1d(64, 256, 1),
-            nn.BatchNorm1d(256),
+            nn.Conv1d(embed_dim, embed_dim*2, 1),
+            nn.BatchNorm1d(embed_dim*2),
             nn.LeakyReLU(),
-            nn.Conv1d(256, 1024, 1),
-            nn.BatchNorm1d(1024),
+            nn.Conv1d(embed_dim*2, embed_dim*4, 1),
+            nn.BatchNorm1d(embed_dim*4),
         )
         # agnostic to number of points
         self.maxpool = LambdaModule(lambda x: torch.max(x, 2, keepdim=True)[0])
 
         self.fc = nn.Sequential(
-            nn.Linear(1024, 512),
-            nn.BatchNorm1d(512),
+            nn.Linear(embed_dim*4, embed_dim*2),
+            nn.BatchNorm1d(embed_dim*2),
             nn.LeakyReLU(),
-            nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
+            nn.Linear(embed_dim*2, embed_dim),
+            nn.BatchNorm1d(embed_dim),
             nn.LeakyReLU(),
         )
-        self.pose = nn.Linear(256, k*k)
+        self.pose = nn.Linear(embed_dim, k*k)
 
         self.identity_vector = nn.Parameter(torch.eye(k).flatten(), requires_grad=False)
 
@@ -52,30 +52,30 @@ class TNet(nn.Module):
         return x
 
 class PointNet(_Network):
-    def __init__(self, out_channels=64, *args, **kwargs) -> None:
+    def __init__(self, out_channels=64, embed_dim=64, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self.permute = Permute([0, 2, 1])
 
-        self.input_tnet = TNet(3)
+        self.input_tnet = TNet(3, 64)
 
         self.conv1 = nn.Sequential(
-            nn.Conv1d(3, 64, 1),
-            nn.BatchNorm1d(64),
+            nn.Conv1d(3, embed_dim, 1),
+            nn.BatchNorm1d(embed_dim),
+            nn.LeakyReLU(),
+            nn.Conv1d(3, embed_dim, 1),
+            nn.BatchNorm1d(embed_dim),
             nn.LeakyReLU(),
         )
 
-        self.feature_tnet = TNet(64)
+        self.feature_tnet = TNet(64, 64)
 
         self.conv2 = nn.Sequential(
-            nn.Conv1d(64, 128, 1),
-            nn.BatchNorm1d(128),
+            nn.Conv1d(embed_dim, embed_dim*2, 1),
+            nn.BatchNorm1d(embed_dim*2),
             nn.LeakyReLU(),
-        )
-
-        self.conv3 = nn.Sequential(
-            nn.Conv1d(128, 1024, 1),
-            nn.BatchNorm1d(1024),
+            nn.Conv1d(embed_dim*2, embed_dim*4, 1),
+            nn.BatchNorm1d(embed_dim*4),
         )
 
         self.maxpool = LambdaModule(lambda x: torch.max(x, 2, keepdim=True)[0])
@@ -83,11 +83,11 @@ class PointNet(_Network):
         # Concat feature points + global information
 
         self.out = [
-            nn.Conv1d(1024 + 64, 512, 1),
-            nn.BatchNorm1d(512),
+            nn.Conv1d(embed_dim*4 + 64, embed_dim*4, 1),
+            nn.BatchNorm1d(embed_dim*4),
             nn.LeakyReLU(),
         ]
-        dim = 512
+        dim = embed_dim*4
         while dim > out_channels:
             self.out.append(nn.Conv1d(dim, dim//2, 1))
             self.out.append(nn.BatchNorm1d(dim//2))
@@ -120,7 +120,6 @@ class PointNet(_Network):
 
         x = self.conv2(x)
 
-        x = self.conv3(x)
         x = self.maxpool(x) # global info : B, C, 1
 
         x = x.repeat(1, 1, features.shape[-1]) # Broadcasted
