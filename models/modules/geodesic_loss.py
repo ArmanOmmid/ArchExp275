@@ -96,6 +96,7 @@ class PointCloudMSELoss(_Loss):
             # In this case, target is the ground truth pose
             R = target[:, :, :3]
             T = target[:, :, 3]
+            print(R.shape, T.shape)
             target = torch.bmm(source, R.transpose(-2, -1)) + T.unsqueeze(-2)
         # Otherwise, target is a point cloud (WHICH REQUIRES CORRESPONDENCES)
 
