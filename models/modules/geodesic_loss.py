@@ -46,7 +46,7 @@ class SpecialOrthogonalLoss(_Loss):
         super().__init__()
         self.weight = weight
 
-    def forward(self, *rotations):
+    def forward(self, rotations):
         
         losses = []
         for R in rotations:

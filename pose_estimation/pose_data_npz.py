@@ -121,7 +121,7 @@ class PoseDataNPZ():
 class PoseDataNPZTorch(torch.utils.data.Dataset):
     def __init__(self, npz_data_path, data_path=None, models_path=None, 
                  levels=None, split=None, samples=8_000,
-                 resize=(432, 768), aspect_ratio=True, margin=8): # Helps bigger images, worse on small images
+                 resize=(144, 256), aspect_ratio=True, margin=8): # Helps bigger images, worse on small images
 
         assert samples is not None, "No Longer Supporting Variable Samples"
 
