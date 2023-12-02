@@ -26,7 +26,8 @@ residual_cross_attention = True
 smooth_conv = True
 
 class XSwinFusion(_Network):
-    def __init__(self, feature_dims=64, swin_embed_dims=64, resize=None, pretrained=False, quaternion=False, **kwargs):
+    def __init__(self, feature_dims=64, swin_embed_dims=64, resize=None, 
+                 quaternion=True, pretrained=False, weights=None, **kwargs):
         super().__init__(**kwargs)
 
         head = swin_embed_dims // 16
@@ -46,7 +47,7 @@ class XSwinFusion(_Network):
                                 num_classes=feature_dims, global_stages=global_stages, 
                                 input_size=resize, final_downsample=final_downsample, 
                                 residual_cross_attention=residual_cross_attention,
-                                smooth_conv=smooth_conv, weights=xswin_weights,
+                                smooth_conv=smooth_conv,
                             )
         
         self.point_net = PointNet(out_channels=feature_dims, embed_dim=feature_dims)
@@ -143,6 +144,8 @@ class XSwinFusion(_Network):
             nn.Conv1d(8, 1, 1),
             Permute([0, 2, 1]), # B C L -> B L C
         )
+
+        self.load(weights)
 
     def forward(self, pcd, rgb, mask_indices):
 

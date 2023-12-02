@@ -65,7 +65,13 @@ class SpecialEuclideanGeodesicLoss(_Loss):
             losses.append(pcd_loss)
 
         if self.SO_Loss:
-            ortho_loss = self.SO_criterion(extra_SO)
+            rotation_list = [p_R]
+            if extra_SO is not None:
+                if type(extra_SO) in [list, tuple]:
+                    rotation_list + extra_SO
+                else:
+                    rotation_list.append(extra_SO)
+            ortho_loss = self.SO_criterion(rotation_list)
             losses.append(ortho_loss)
 
         losses = torch.stack(losses)
