@@ -264,10 +264,15 @@ class PoseData:
 
             color = scene["color"]() # normalization 255
             depth = scene["depth"]() # normalization 1000
-            label = scene["label"]()
             meta = scene["meta"]
-            meta["unique"] = list(np.unique(label))
-            meta["objects"] = [id for id in meta["unique"] if id < 79]
+            try:
+                label = scene["label"]()
+                meta["unique"] = list(np.unique(label))
+                meta["objects"] = [id for id in meta["unique"] if id < 79]
+            except KeyError:
+                label = None
+                meta["unique"] = None
+                meta["objects"] = None
 
             scene_path_i = os.path.join(scene_path, f"{l}-{s}-{v}")
             np.savez(scene_path_i, color=color, depth=depth, label=label, meta=meta)
