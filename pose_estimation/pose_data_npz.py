@@ -220,7 +220,7 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         sym = self.get_symmetry(obj_id)
 
-        return source_pcd, target_pcd, color, mask_indices, pose, sym, key
+        return source_pcd, target_pcd, color, mask_indices, pose, sym, np.array(key), obj_id
 
 def predict(model, points, color, mask_info):
     model.eval()
