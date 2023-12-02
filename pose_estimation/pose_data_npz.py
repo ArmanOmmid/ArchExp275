@@ -183,9 +183,9 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         meta = self.data.meta(key)
         label = self.data.label(key)
         if label is None:
-            # PERFORM SEGMENTATION AND EXTRACT MASK 
+            # Can't Do Segmentation here
             raise NotImplementedError
-            label = segmentation_model(color)
+            # label = segmentation_model(color)
         
         mask = scene["label"] == obj_id
 
@@ -220,7 +220,7 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         sym = self.get_symmetry(obj_id)
 
-        return source_pcd, target_pcd, color, mask_indices, pose, sym
+        return source_pcd, target_pcd, color, mask_indices, pose, sym, key
 
 def predict(model, points, color, mask_info):
     model.eval()
