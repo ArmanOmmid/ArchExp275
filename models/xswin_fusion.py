@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.ops.misc import Permute
 
 from ._network import _Network
 from .xswin import XNetSwinTransformer
@@ -48,16 +49,20 @@ class XSwinFusion(_Network):
         )
 
         self.final = nn.Sequential(
+            Permute([0, 2, 1]),
             ViTEncoderBlock(num_heads=3, hidden_dim=feature_dims*3, mlp_dim=feature_dims*3,
                             dropout=0.0, attention_dropout=0.0,
                             norm_layer= partial(nn.LayerNorm, eps=1e-6)),
+            Permute([0, 2, 1]),
             nn.LeakyReLU(),
             nn.Conv1d(feature_dims*3, feature_dims, 1),
             nn.BatchNorm1d(feature_dims),
             nn.LeakyReLU(),
+            Permute([0, 2, 1]),
             ViTEncoderBlock(num_heads=4, hidden_dim=feature_dims, mlp_dim=feature_dims,
                             dropout=0.0, attention_dropout=0.0,
                             norm_layer=partial(nn.LayerNorm, eps=1e-6)),
+            Permute([0, 2, 1]),
             nn.LeakyReLU(),
             nn.Conv1d(feature_dims, feature_dims, 1),
             nn.BatchNorm1d(feature_dims),

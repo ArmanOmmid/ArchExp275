@@ -60,17 +60,20 @@ class PointNet(_Network):
         self.input_tnet = TNet(3, 64)
 
         self.conv1 = nn.Sequential(
-            nn.Conv1d(3, embed_dim, 1),
-            nn.BatchNorm1d(embed_dim),
+            nn.Conv1d(3, 64, 1),
+            nn.BatchNorm1d(64),
             nn.LeakyReLU(),
-            nn.Conv1d(embed_dim, embed_dim, 1),
-            nn.BatchNorm1d(embed_dim),
+            nn.Conv1d(64, 64, 1),
+            nn.BatchNorm1d(64),
             nn.LeakyReLU(),
         )
 
         self.feature_tnet = TNet(64, 64)
 
         self.conv2 = nn.Sequential(
+            nn.Conv1d(64, embed_dim, 1),
+            nn.BatchNorm1d(embed_dim),
+            nn.LeakyReLU(),
             nn.Conv1d(embed_dim, embed_dim*2, 1),
             nn.BatchNorm1d(embed_dim*2),
             nn.LeakyReLU(),
