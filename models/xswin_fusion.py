@@ -10,6 +10,8 @@ from ._network import _Network
 from .xswin import XNetSwinTransformer
 from .pointnet import PointNet
 
+from .modules import LambdaModule, ViTEncoderBlock
+
 patch_size = [16, 16] # [4, 4]
 embed_dim = 16 # 64
 depths = [1, 1] # [3, 3, 3]
@@ -33,6 +35,34 @@ class XSwinFusion(_Network):
         
         self.point_net = PointNet(out_channels=feature_dims)
 
+        self.global_net = nn.Sequential(
+            nn.Conv1d(feature_dims*2, feature_dims, 1),
+            nn.BatchNorm1d(feature_dims),
+            nn.LeakyReLU(),
+            nn.Conv1d(feature_dims, feature_dims, 1),
+            nn.BatchNorm1d(feature_dims),
+            nn.LeakyReLU(),
+            LambdaModule(lambda x: torch.mean(x, 2, keepdim=True)) # Average Pooling
+        )
+
+        self.final = nn.Sequential(
+            ViTEncoderBlock(num_heads=3, hidden_dim=feature_dims, mlp_dim=feature_dims,
+                            dropout=0.0, attention_dropout=0.0,
+                            norm_layer= partial(nn.LayerNorm, eps=1e-6)),
+            nn.LeakyReLU(),
+            nn.Conv1d(feature_dims*3, feature_dims, 1),
+            nn.BatchNorm1d(feature_dims),
+            nn.LeakyReLU(),
+            ViTEncoderBlock(num_heads=4, hidden_dim=feature_dims, mlp_dim=feature_dims,
+                            dropout=0.0, attention_dropout=0.0,
+                            norm_layer=partial(nn.LayerNorm, eps=1e-6)),
+            nn.LeakyReLU(),
+            nn.Conv1d(feature_dims, feature_dims, 1),
+            nn.BatchNorm1d(feature_dims),
+        )
+
+        self.pose = nn.Linear(feature_dims, 12)
+
     def forward(self, pcd, rgb, mask_indices):
         
         rgb = self.segment_net(rgb)
@@ -52,6 +82,15 @@ class XSwinFusion(_Network):
 
         x = torch.cat((rgb, pcd), dim=-2) # concat along channel dim (B, C, L)
 
-        print(x.shape)
+        g = self.global_net(x)
+        g = g.repeat(1, 1, x.shape[-1]) # Broadcasted
 
-        return x
+        x = torch.cat((x, g), dim=-2) # B, C1 + C2, L
+
+        x = self.final(x)
+
+        x = self.pose(x)
+
+        x = x.view(-1, 3, 4)
+
+        return x    

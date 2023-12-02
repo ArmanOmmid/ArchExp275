@@ -16,12 +16,11 @@ class TNet(nn.Module):
             nn.Conv1d(k, 64, 1),
             nn.BatchNorm1d(64),
             nn.LeakyReLU(),
-            nn.Conv1d(64, 128, 1),
-            nn.BatchNorm1d(128),
+            nn.Conv1d(64, 256, 1),
+            nn.BatchNorm1d(256),
             nn.LeakyReLU(),
-            nn.Conv1d(128 ,1024, 1),
+            nn.Conv1d(256, 1024, 1),
             nn.BatchNorm1d(1024),
-            nn.LeakyReLU(),
         )
         # agnostic to number of points
         self.maxpool = LambdaModule(lambda x: torch.max(x, 2, keepdim=True)[0])
