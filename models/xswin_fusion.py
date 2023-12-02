@@ -164,4 +164,6 @@ class XSwinFusion(_Network):
 
         x = torch.cat((R, T), dim=-1)
 
+        print(x.shape)
+
         return x, transforms
