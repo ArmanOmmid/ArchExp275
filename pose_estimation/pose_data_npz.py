@@ -187,6 +187,8 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         except Exception:
             pose = 0
 
+        print(self.objects["info"][obj_id])
+
         # source_pcd and depth not needed for now
         source_pcd = self.sample_source_pcd(obj_id) * meta["scales"][obj_id]
 

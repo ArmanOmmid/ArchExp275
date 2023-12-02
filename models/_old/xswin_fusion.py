@@ -11,11 +11,11 @@ import torchvision.models.segmentation as segmentation
 
 import kornia.geometry.conversions as conversions
 
-from ._network import _Network
-from .xswin import XNetSwinTransformer
-from .pointnet import PointNet
+from .._network import _Network
+from ..xswin import XNetSwinTransformer
+from ..pointnet import PointNet
 
-from .modules import LambdaModule, ViTEncoderBlock
+from ..modules import LambdaModule, ViTEncoderBlock
 
 patch_size = [8, 8] # [4, 4]
 depths = [2, 2, 2] # [3, 3, 3]
@@ -94,14 +94,6 @@ class XSwinFusion(_Network):
         #     nn.Linear(feature_dims, 12),
         # )
 
-        representation = [
-                nn.Conv1d(16, 8, 1),
-                nn.BatchNorm1d(8),
-                nn.LeakyReLU(),
-                nn.Conv1d(8, 4, 1),
-                nn.BatchNorm1d(4),
-             ] if self.quaternion else [nn.Conv1d(16, 9, 1)]
-
         self.rotation = nn.Sequential(
             nn.Conv1d(feature_dims, 32, 1),
             nn.BatchNorm1d(32),
@@ -112,7 +104,14 @@ class XSwinFusion(_Network):
             nn.Conv1d(16, 16, 1),
             nn.BatchNorm1d(16),
             nn.LeakyReLU(),
-            *representation,
+            *(
+                nn.Conv1d(16, 8, 1),
+                nn.BatchNorm1d(8),
+                nn.LeakyReLU(),
+                nn.Conv1d(8, 4, 1),
+                nn.BatchNorm1d(4),
+            ) if self.quaternion else 
+            nn.Conv1d(16, 9, 1),
             Permute([0, 2, 1]), # B C L -> B L C
         )
 
