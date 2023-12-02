@@ -79,16 +79,23 @@ class SpecialOrthogonalLoss(_Loss):
         return loss * self.weight
     
 class PointCloudMSELoss(_Loss):
-    def __init__(self, weight=1.0) -> None:
+    def __init__(self, target_type="pose", weight=1.0) -> None:
         super().__init__()
         self.weight = weight
+        assert target_type in ["pose", "point"]
+        self.target_type = target_type
 
-    def forward(self, source, target, pose):
+    def forward(self, source, pose, target):
 
         R = pose[:, :, :3]
         T = pose[:, :, 3]
 
         source_transformed = torch.bmm(source, R.transpose(-2, -1)) + T.unsqueeze(-2)
+
+        if target == "pose":
+            # In this case, target is the ground truth pose
+            target = torch.bmm(source, target.transpose(-2, -1)) + T.unsqueeze(-2)
+        # Otherwise, target is a point cloud (WHICH REQUIRES CORRESPONDENCES)
 
         loss = F.mse_loss(source_transformed, target)
 
