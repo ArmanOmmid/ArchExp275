@@ -183,7 +183,10 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
         meta = self.data.meta(key)
         label = self.data.label(key)
         if label is None:
-            
+            # PERFORM SEGMENTATION AND EXTRACT MASK 
+            raise NotImplementedError
+            label = segmentation_model(color)
+        
         mask = scene["label"] == obj_id
 
 
