@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import cv2
 
+import itertools
+import torch
+import kornia.geometry.conversions as conversions
+
 from matplotlib.pyplot import get_cmap
 
 NUM_OBJECTS = 79
@@ -62,8 +66,28 @@ def sample_indices(v, u, max_samples):
 
     return sample_indices.T
 
-def enumerate_symmetries():
-    pass
+def enumerate_symmetries(sym_info, inf=24):
+    basis = {"x" : torch.tensor([[1, 0, 0]]), "y" : torch.tensor([[0, 1, 0]]), "z" : torch.tensor([[0, 0, 1]])}
+    all_symmetries = []
+    matrices = {
+        "x" : [torch.eye(3)],
+        "y" : [torch.eye(3)],
+        "z": [torch.eye(3)]
+    }
+    if sym_info == "no":
+        return [torch.eye(3)]
+    for sym_n in sym_info.split("|"):
+        b = sym_n[0]
+        n = int(sym_n[1]) if sym_n[1] != "i" else inf
+        angles = torch.linspace(0, 2*torch.pi, steps=n+1)[1:-1] # Ignore first and last (both identity)
+        for angle in angles:
+            matrices[b].append(
+                conversions.axis_angle_to_rotation_matrix(angle * basis[b])
+            )
+    for sx, sy, sz in itertools.product(*list(matrices.values())):
+        all_symmetries.append(sx @ sy @ sz)
+
+    return all_symmetries
 
 def crop_and_resize(feature_map, mask, target_size=None, margin=12, aspect_ratio=True, mask_fill=False):
 
