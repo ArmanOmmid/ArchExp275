@@ -61,7 +61,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
 
         if self.PCD_Loss and source_pcd is not None:
             # source_pcd, predicted_pose, 
-            pcd_loss = self.PCD_criterion(source_pcd, p_R, t_R)
+            pcd_loss = self.PCD_criterion(source_pcd, predicted_transform, target_transform)
             losses.append(pcd_loss)
 
         if self.SO_Loss:
