@@ -30,7 +30,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
 
         p_T = predicted_transform[:, :3, 3]
         t_T = target_transform[:, :3, 3]
-        translation_loss = F.mse_loss(p_T, t_T) # Over Batch
+        translation_loss = F.mse_loss(p_T, t_T)
 
         p_R = predicted_transform[:, :3, :3]
         t_R = target_transform[:, :3, :3]
