@@ -53,8 +53,8 @@ class XSwinFusion(_Network):
             ViTEncoderBlock(num_heads=3, hidden_dim=feature_dims*3, mlp_dim=feature_dims*3,
                             dropout=0.0, attention_dropout=0.0,
                             norm_layer= partial(nn.LayerNorm, eps=1e-6)),
-            Permute([0, 2, 1]), # B C L
             nn.LeakyReLU(),
+            Permute([0, 2, 1]), # B C L
             nn.Conv1d(feature_dims*3, feature_dims, 1),
             nn.BatchNorm1d(feature_dims),
             nn.LeakyReLU(),
@@ -62,35 +62,75 @@ class XSwinFusion(_Network):
             ViTEncoderBlock(num_heads=4, hidden_dim=feature_dims, mlp_dim=feature_dims,
                             dropout=0.0, attention_dropout=0.0,
                             norm_layer=partial(nn.LayerNorm, eps=1e-6)),
-            Permute([0, 2, 1]), # B C L
             nn.LeakyReLU(),
+            Permute([0, 2, 1]), # B C L
             nn.Conv1d(feature_dims, feature_dims, 1),
             nn.BatchNorm1d(feature_dims),
         )
 
-        self.final_max = LambdaModule(lambda x: torch.max(x, 2, keepdim=True)[0])
-        self.final_mean = LambdaModule(lambda x: torch.mean(x, 2, keepdim=True))
+        # self.final_max = LambdaModule(lambda x: torch.max(x, 2, keepdim=True)[0])
+        # self.final_mean = LambdaModule(lambda x: torch.mean(x, 2, keepdim=True))
 
-        self.pose = nn.Sequential(
-            nn.Linear(feature_dims+feature_dims, feature_dims),
-            nn.BatchNorm1d(feature_dims),
+        # self.pose = nn.Sequential(
+        #     nn.Linear(feature_dims+feature_dims, feature_dims),
+        #     nn.BatchNorm1d(feature_dims),
+        #     nn.LeakyReLU(),
+        #     nn.Linear(feature_dims, feature_dims),
+        #     nn.BatchNorm1d(feature_dims),
+        #     nn.LeakyReLU(),
+        #     nn.Linear(feature_dims, 12),
+        # )
+
+        self.rotation = nn.Sequential(
+            nn.Conv1d(feature_dims, 32, 1),
+            nn.BatchNorm1d(32),
             nn.LeakyReLU(),
-            nn.Linear(feature_dims, feature_dims),
-            nn.BatchNorm1d(feature_dims),
+            nn.Conv1d(32, 16, 1),
+            nn.BatchNorm1d(16),
             nn.LeakyReLU(),
-            nn.Linear(feature_dims, 12),
+            nn.Conv1d(16, 16, 1),
+            nn.BatchNorm1d(16),
+            nn.LeakyReLU(),
+            nn.Conv1d(16, 9, 1),
+            Permute([0, 2, 1]), # B C L -> B L C
         )
 
+        self.translation = nn.Sequential(
+            nn.Conv1d(feature_dims, 32, 1),
+            nn.BatchNorm1d(32),
+            nn.LeakyReLU(),
+            nn.Conv1d(32, 16, 1),
+            nn.BatchNorm1d(16),
+            nn.LeakyReLU(),
+            nn.Conv1d(16, 8, 1),
+            nn.BatchNorm1d(8),
+            nn.LeakyReLU(),
+            nn.Conv1d(8, 3, 1),
+            Permute([0, 2, 1]), # B C L -> B L C
+        )
+
+        self.confidence = nn.Sequential(
+            nn.Conv1d(feature_dims, 32, 1),
+            nn.BatchNorm1d(32),
+            nn.LeakyReLU(),
+            nn.Conv1d(32, 16, 1),
+            nn.BatchNorm1d(16),
+            nn.LeakyReLU(),
+            nn.Conv1d(16, 8, 1),
+            nn.BatchNorm1d(8),
+            nn.LeakyReLU(),
+            nn.Conv1d(8, 1, 1),
+            Permute([0, 2, 1]), # B C L -> B L C
+        )
 
     def forward(self, pcd, rgb, mask_indices):
-        
-        rgb = self.segment_net(rgb)
-
-        pcd, transforms = self.point_net(pcd)
-
-        rgb = torch.permute(rgb, (0, 2, 3, 1)) # B C H W -> B H W C (channel last for masking)
 
         batch_indices = np.arange(pcd.size(0))[:, None]
+        
+        rgb = self.segment_net(rgb)
+        pcd, transforms = self.point_net(pcd)
+        rgb = torch.permute(rgb, (0, 2, 3, 1)) # B C H W -> B H W C (channel last for masking)
+
         row_indices = mask_indices[:, 0, :]
         col_indices = mask_indices[:, 1, :]
 
@@ -106,12 +146,22 @@ class XSwinFusion(_Network):
 
         x = self.mix(x)
 
-        x_max = self.final_max(x).squeeze(-1)
-        x_mean = self.final_mean(x).squeeze(-1)
+        # x_max = self.final_max(x).squeeze(-1)
+        # x_mean = self.final_mean(x).squeeze(-1)
+        # x = torch.cat((x_max, x_mean), dim=-1)
+        # x = self.pose(x)
+        # x = x.view(-1, 3, 4)
 
-        x = torch.cat((x_max, x_mean), dim=-1)
-        x = self.pose(x)
+        B = np.arange(pcd.size(0))
+        R = self.rotation(x)
+        T = self.translation(x)
+        C = self.confidence(x)
 
-        x = x.view(-1, 3, 4)
+        C = C.squeeze(-1).argmax(dim=-1)
+
+        R = R[B, C, :].view(-1, 3, 3)
+        T = T[B, C, :].unsqueeze(-1)
+
+        x = torch.cat((R, T), dim=-1)
 
         return x, transforms
