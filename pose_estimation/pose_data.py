@@ -256,6 +256,7 @@ class PoseData:
         
         scene_path = os.path.join(npz_dataset_path, "scenes")
         os.makedirs(scene_path)
+        print(pose_data.data[0])
         for i, key in enumerate(self.data.keys()):
 
             l, s, v = key
