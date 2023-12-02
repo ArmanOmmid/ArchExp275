@@ -48,7 +48,7 @@ class XSwinFusion(_Network):
         else:
             xswin_kwargs["num_classes"] = feature_dims
             xswin_kwargs["input_size"] = resize
-            self.segment_net = XNetSwinTransformer(*xswin_kwargs)
+            self.segment_net = XNetSwinTransformer(**xswin_kwargs)
         
         self.point_net = PointNet(out_channels=feature_dims, embed_dim=feature_dims)
 
