@@ -110,7 +110,7 @@ class PoseDataNPZ():
     def meta(self, key):
         return self.data[key]["meta"][()]
 
-    def get_label(self, key):
+    def label(self, key):
         label = self.data[key]["label"]
         if type(label.dtype).__name__ == "dtype[object_]":
             return None
