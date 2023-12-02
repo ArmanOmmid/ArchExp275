@@ -17,38 +17,38 @@ from .pointnet import PointNet
 
 from .modules import LambdaModule, ViTEncoderBlock
 
-patch_size = [8, 8] # [4, 4]
-depths = [2, 2, 2] # [3, 3, 3]
-window_size = [4, 4]
-global_stages = 1
-final_downsample = False
-residual_cross_attention = True
-smooth_conv = True
+default_xswin_kwargs = {
+    "patch_size" : [8, 8],
+    "embed_dim" : 64,
+    "depths" : [2, 2, 2],
+    "num_heads" : [4, 8, 16],
+    "window_size" : [4, 4],
+    "mlp_ratio" : 4.0,
+    "num_classes" : None,
+    "global_stages" : 1,
+    "input_size" : None,
+    "final_downsample" : False,
+    "residual_cross_attention" : True,
+    "smooth_conv" : True,
+}
 
 class XSwinFusion(_Network):
-    def __init__(self, feature_dims=64, swin_embed_dims=64, resize=None, 
-                 quaternion=True, pretrained=False, weights=None, **kwargs):
+    def __init__(self, feature_dims=64, resize=None, quaternion=True, 
+                 xswin_kwargs=default_xswin_kwargs, pretrained_resnet=False, weights=None, **kwargs):
         super().__init__(**kwargs)
-
-        head = swin_embed_dims // 16
-        num_heads = [head*(2**i) for i, _ in enumerate(depths)]
 
         self.quaternion = quaternion
 
-        self.pretrained = pretrained
-        if pretrained:
+        self.pretrained = pretrained_resnet
+        if pretrained_resnet:
             self.segment_net = segmentation.fcn_resnet50(pretrained=True)
             self.segment_net.classifier[4] = nn.Conv2d(512, feature_dims, kernel_size=(1,1))
             if self.segment_net.aux_classifier is not None:
                 self.segment_net.aux_classifier[4] = nn.Conv2d(256, feature_dims, kernel_size=(1,1))
         else:
-            self.segment_net = XNetSwinTransformer(patch_size=patch_size, embed_dim=swin_embed_dims, 
-                                depths=depths, num_heads=num_heads, window_size=window_size, 
-                                num_classes=feature_dims, global_stages=global_stages, 
-                                input_size=resize, final_downsample=final_downsample, 
-                                residual_cross_attention=residual_cross_attention,
-                                smooth_conv=smooth_conv,
-                            )
+            xswin_kwargs["num_classes"] = feature_dims
+            xswin_kwargs["input_size"] = resize
+            self.segment_net = XNetSwinTransformer(*xswin_kwargs)
         
         self.point_net = PointNet(out_channels=feature_dims, embed_dim=feature_dims)
 
