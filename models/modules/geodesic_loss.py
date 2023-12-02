@@ -27,7 +27,7 @@ class SpecialEuclideanGeodesicLoss(_Loss):
         p_T = predicted_transform[:, :3, 3]
         t_T = target_transform[:, :3, 3]
 
-        translation_loss = torch.norm(p_T - t_T).mean()
+        translation_loss = torch.norm(p_T - t_T).mean() # Over Batch
 
         p_R = predicted_transform[:, :3, :3]
         t_R = target_transform[:, :3, :3]
@@ -40,14 +40,14 @@ class SpecialEuclideanGeodesicLoss(_Loss):
         cos_theta = torch.clamp(cos_theta, -0.9999, 0.9999)  # Numerical stability
         theta = torch.acos(cos_theta)
 
-        rotation_loss = torch.mean(theta)
+        rotation_loss = torch.mean(theta) # Over Batch
 
         losses.append(rotation_loss)
         losses.append(translation_loss)
 
         if self.SO_Loss:
             I = torch.eye(3, device=p_R.device).expand_as(p_R)
-            ortho_loss = torch.norm(torch.bmm(p_R, p_R.transpose(-2, -1)) - I, dim=(-2, -1)).mean()
+            ortho_loss = torch.norm(torch.bmm(p_R, p_R.transpose(-2, -1)) - I, dim=(-2, -1)).mean() # Over Batch
             losses.append(ortho_loss * self.SO_weight)
 
         losses = torch.stack(losses)
@@ -63,13 +63,16 @@ class SpecialOrthogonalLoss(_Loss):
         self.weight = weight
 
     def forward(self, rotations):
+
+        if type(rotations) not in [list, tuple]:
+            rotations = [rotations]
         
         losses = []
         for R in rotations:
             row, col = R.shape[-2:]
             assert row == col
             I = torch.eye(row, device=R.device).expand_as(R)
-            ortho_loss = torch.norm(torch.bmm(R, R.transpose(-2, -1)) - I, dim=(-2, -1)).mean()
+            ortho_loss = torch.norm(torch.bmm(R, R.transpose(-2, -1)) - I, dim=(-2, -1)).mean() # Over Batch
             losses.append(ortho_loss)
         loss = torch.stack(losses).mean()
 
