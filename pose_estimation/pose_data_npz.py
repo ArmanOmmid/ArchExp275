@@ -251,10 +251,11 @@ class PoseDataNPZSegmentationTorch(torch.utils.data.Dataset):
         label = self.data.label(key)
 
         if self.resize:
-
-            color = cv2.resize(color, self.resize, interpolation=cv2.INTER_NEAREST)
+            
+            H, W = self.resize
+            color = cv2.resize(color, (W, H), interpolation=cv2.INTER_NEAREST)
             if label is not None:
-                label = cv2.resize(label, self.resize, interpolation=cv2.INTER_NEAREST)
+                label = cv2.resize(label, (W, H), interpolation=cv2.INTER_NEAREST)
 
         if label is None:
             label = 0 # Ignore label if testing
