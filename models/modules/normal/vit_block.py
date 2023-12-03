@@ -33,9 +33,9 @@ class ViTEncoderBlock(nn.Module):
 
     def forward(self, input: torch.Tensor):
         torch._assert(input.dim() == 3, f"Expected (batch_size, seq_length, hidden_dim) got {input.shape}")
-        print("In", torch.max(input), torch.min(input))
+        print("In", torch.max(torch.abs(input)), torch.min(torch.abs(input)))
         x = self.ln_1(input)
-        print("Out", torch.max(x), torch.min(x))
+        print("Out", torch.max(torch.abs(x)), torch.min(torch.abs(x)))
         
         x, _ = self.self_attention(x, x, x, need_weights=False)
         x = self.dropout(x)
