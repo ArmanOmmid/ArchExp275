@@ -33,6 +33,7 @@ class ViTEncoderBlock(nn.Module):
 
     def forward(self, input: torch.Tensor):
         torch._assert(input.dim() == 3, f"Expected (batch_size, seq_length, hidden_dim) got {input.shape}")
+        
         # print("In", torch.max(torch.abs(input)), torch.min(torch.abs(input)))
         # print(torch.min(input.std(dim=1, unbiased=False)))
         x = self.ln_1(input) # This batchnorm sometimes gives nans. 
