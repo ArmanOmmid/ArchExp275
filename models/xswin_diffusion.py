@@ -251,14 +251,15 @@ class XNetSwinTransformerDiffusion(_Network):
             if i+1 < (len(self.encoder) - 1) or self.final_downsample:
                 x = self.encoder[i+1](x, c) # Downsample (PatchMerge)
 
-        *B, H, W, C = x.shape
-        x = x.contiguous().view(*B, H*W, C)
+        if self.has_global_stages and not isinstance(self.middle, nn.Identity):
+            *B, H, W, C = x.shape
+            x = x.contiguous().view(*B, H*W, C)
 
-        if self.pos_embed is not None and self.has_global_stages:
-            x = x + self.pos_embed
-        x = self.middle(x, c) # ViT Encoder
+            if self.pos_embed is not None:
+                x = x + self.pos_embed
+            x = self.middle(x, c) # ViT Encoder
 
-        x = x.contiguous().view(*B, H, W, C)
+            x = x.contiguous().view(*B, H, W, C)
 
         for i_residual, i in zip(
             range(len(residuals)-1, -1, -1), # Count backwards for residual indices 
