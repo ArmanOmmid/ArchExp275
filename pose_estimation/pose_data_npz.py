@@ -244,7 +244,7 @@ class PoseDataNPZSegmentationTorch(torch.utils.data.Dataset):
         scene = self.data[key]
 
         color = scene["color"] / 255
-        color = torch.permute(color, (2, 0, 1))
+        color = np.transpose(color, (2, 0, 1))
         # meta = self.data.meta(key)
         label = self.data.label(key)
 
