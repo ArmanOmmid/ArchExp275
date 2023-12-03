@@ -44,7 +44,7 @@ class PoseData:
 
     _npz_handlers_cache = {}
 
-    def __init__(self, data_path, models_path, make_object_cache=False, split_processed_data=None) -> None:
+    def __init__(self, data_path, models_path, object_caching=False, split_processed_data=None) -> None:
 
         self.data_path = data_path
         self.models_path = models_path
@@ -57,8 +57,12 @@ class PoseData:
 
         self.keylist = list(self.data.keys())
 
-        self.object_cache = make_object_cache
-        self.object_cache_path = os.path.join(self.models_path, "objects.npz")
+        self.object_cache = object_caching
+        if isinstance(object_caching, str):
+            self.object_cache_path = object_caching
+            self.object_cache = True
+        else:
+            self.object_cache_path = os.path.join(self.models_path, "objects.npz")
 
         if os.path.exists(self.object_cache_path):
             self.object_cache = True # Why Not
