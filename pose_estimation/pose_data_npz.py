@@ -262,4 +262,4 @@ class PoseDataNPZSegmentationTorch(torch.utils.data.Dataset):
 
         color = np.transpose(color, (2, 0, 1))
 
-        return color.astype(np.float32)/255, label.astype(np.float32), np.array(key)
+        return color.astype(np.float32)/255, label.astype(np.long), np.array(key)
