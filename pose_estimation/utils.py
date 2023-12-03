@@ -207,6 +207,8 @@ def compare_points_triplet(source, target, prediction, truth, scale=1, translate
         ax.scatter(points1[:, 0], points1[:, 2], points1[:, 1])
         ax.scatter(points2[:, 0], points2[:, 2], points2[:, 1])
 
+    plt.show()
+
 """Metric and visualization."""
 def compute_rre(R_est: np.ndarray, R_gt: np.ndarray):
     """Compute the relative rotation error (geodesic distance of rotation)."""
