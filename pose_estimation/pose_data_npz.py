@@ -15,11 +15,11 @@ class PoseDataNPZ():
 
     _npz_handlers_cache = {}
 
-    def __init__(self, npz_data_path, data_path=None, models_path=None, levels=None, split=None, make_object_cache=False) -> None:
+    def __init__(self, npz_data_path, data_path=None, models_path=None, levels=None, split=None, object_caching=False) -> None:
         
         self.npz_data_path = npz_data_path
         if data_path is not None and models_path is not None:
-            self.pose_data = PoseData(data_path, models_path, make_object_cache=make_object_cache)
+            self.pose_data = PoseData(data_path, models_path, object_caching=object_caching)
         else:
             assert os.path.exists(self.npz_data_path), "Must Provide NPZ Path if not providing data_path and model_path"
             print(f"Presumed Preloaded NPZ Dataset: {npz_data_path}")
@@ -129,7 +129,7 @@ class PoseDataNPZ():
     #         loader.close()
 
 class PoseDataNPZTorch(torch.utils.data.Dataset):
-    def __init__(self, npz_data_path, data_path=None, models_path=None, 
+    def __init__(self, npz_data_path, data_path=None, models_path=None, object_caching=False,
                  levels=None, split=None, samples=8_000,
                  resize=(144, 256), aspect_ratio=True, margin=12,
                  symmetry_pad=64, 
@@ -137,7 +137,7 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         assert samples is not None, "No Longer Supporting Variable Samples"
 
-        self.data = PoseDataNPZ(npz_data_path, data_path, models_path, levels, split)
+        self.data = PoseDataNPZ(npz_data_path, data_path, models_path, object_caching=object_caching, levels=levels, split=split)
         self.num_classes = len(self.data.info)
         self.samples = samples
 
@@ -225,10 +225,10 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
 
 class PoseDataNPZSegmentationTorch(torch.utils.data.Dataset):
-    def __init__(self, npz_data_path, data_path=None, models_path=None, 
+    def __init__(self, npz_data_path, data_path=None, models_path=None, object_caching=False,
                  levels=None, split=None, resize=None): 
 
-        self.data = PoseDataNPZ(npz_data_path, data_path, models_path, levels, split)
+        self.data = PoseDataNPZ(npz_data_path, data_path, models_path, object_caching=object_caching, levels=levels, split=split)
         self.num_classes = len(self.data.info)
 
         self.resize = resize
