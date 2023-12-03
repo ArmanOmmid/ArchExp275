@@ -195,7 +195,7 @@ def compare_points_triplet(source, target, prediction, truth, scale=1, translate
         (source @ truth[:3, :3].T + truth[:3, 3], source @ prediction[:3, :3].T + prediction[:3, 3]),
     ]
 
-    plt.figure()
+    plt.figure(figsize=(30, 30))
     for i in range(3):
 
         points1, points2 = points[i]
