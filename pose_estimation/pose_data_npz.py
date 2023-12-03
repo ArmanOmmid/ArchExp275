@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 from PIL import Image
 import trimesh
+import cv2
 
 import torch
 
@@ -225,10 +226,12 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
 class PoseDataNPZSegmentationTorch(torch.utils.data.Dataset):
     def __init__(self, npz_data_path, data_path=None, models_path=None, 
-                 levels=None, split=None): 
+                 levels=None, split=None, resize=None): 
 
         self.data = PoseDataNPZ(npz_data_path, data_path, models_path, levels, split)
         self.num_classes = len(self.data.info)
+
+        self.resize = resize
 
         self._data = []
 
@@ -243,12 +246,17 @@ class PoseDataNPZSegmentationTorch(torch.utils.data.Dataset):
 
         scene = self.data[key]
 
-        color = scene["color"] / 255
+        color = scene["color"]
         color = np.transpose(color, (2, 0, 1))
         # meta = self.data.meta(key)
         label = self.data.label(key)
 
+        if self.resize:
+
+            color = cv2.resize(color, self.resize, interpolation=cv2.INTER_NEAREST)
+            label = cv2.resize(label, self.resize, interpolation=cv2.INTER_NEAREST)
+
         if label is None:
             label = 0 # Ignore label if testing
 
-        return color.astype(np.float32), label.astype(np.float32), np.array(key)
+        return color.astype(np.float32)/255, label.astype(np.float32), np.array(key)
