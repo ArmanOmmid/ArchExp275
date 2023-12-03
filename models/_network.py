@@ -46,13 +46,6 @@ class _Network(nn.Module, ABC):
 
         self.load_state_dict(loaded_state_dict, strict=strict)
 
-
-    print("Missing keys:", missing_keys)
-    print("Unexpected keys:", unexpected_keys)
-
-# Optionally, load the state dict (ignoring missing/unexpected keys)
-model.load_state_dict(saved_state_dict, strict=False)
-
     def save(self, save_path: str):
         """
         All saves should be under the same path folder, under different tag folders, with the same filename
