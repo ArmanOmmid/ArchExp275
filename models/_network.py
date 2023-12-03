@@ -28,7 +28,7 @@ class _Network(nn.Module, ABC):
             missing_keys = [k for k in model_state_dict.keys() if k not in loaded_state_dict]
 
             if len(unexpected_keys) > 0:
-                if missing_ok:
+                if unexpected_ok:
                     print("Unexpected Keys Permitted")
                     print(unexpected_keys)
                 else:
