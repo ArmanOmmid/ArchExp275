@@ -19,10 +19,9 @@ class _Network(nn.Module, ABC):
         load_path = load_path.split(".")[0] + WEIGHTS_EXTENSION
 
         strict = not (unexpected_ok or missing_ok)
-
+        loaded_state_dict = torch.load(load_path, map_location=torch.device(map_location))
         if not strict:
             model_state_dict = self.state_dict()
-            loaded_state_dict = torch.load(load_path, map_location=torch.device(map_location))
 
             unexpected_keys = [k for k in loaded_state_dict.keys() if k not in model_state_dict]
             missing_keys = [k for k in model_state_dict.keys() if k not in loaded_state_dict]
