@@ -29,7 +29,7 @@ def back_project(depth, meta, mask=None, transforms=None, samples=None, world=Tr
         v, u = np.indices(depth.shape)
     else:
         v, u = np.nonzero(mask)
-        
+
     if samples is not None:
         v, u = sample_indices(v, u, samples)
         depth = depth[v, u]
@@ -186,6 +186,42 @@ def compare_points(points1, points2, scale=1, translate=[0, 0, 0]):
     ax.scatter(points1[:, 0], points1[:, 2], points1[:, 1])
     ax.scatter(points2[:, 0], points2[:, 2], points2[:, 1])
 
+def compare_points_triplet(source, target, prediction, truth, scale=1, translate=[0, 0, 0]):
+    fig = plt.figure()
+
+    points = [
+        (source @ prediction[:3, :3].T + prediction[:3, 3], target),
+        (source @ truth[:3, :3].T + truth[:3, 3], target),
+        (source @ truth[:3, :3].T + truth[:3, 3], source @ prediction[:3, :3].T + prediction[:3, 3]),
+    ]
+
+    for i in range(3):
+
+        points1, points2 = points[i]
+        fig = plt.figure()
+        ax = fig.add_subplot(3, 3, 1, projection='3d')
+        xt, yt, zt = translate
+        ax.set_xlim3d([-2*scale + xt, 2*scale + xt])
+        ax.set_ylim3d([-2*scale + yt, 2*scale + yt])
+        ax.set_zlim3d([0*scale + zt, 4*scale + zt])
+        ax.scatter(points1[:, 0], points1[:, 2], points1[:, 1])
+        ax.scatter(points2[:, 0], points2[:, 2], points2[:, 1])
+
+        ax = fig.add_subplot(3, 2, 1, projection='3d')
+        xt, yt, zt = translate
+        ax.set_xlim3d([-2*scale + xt, 2*scale + xt])
+        ax.set_ylim3d([-2*scale + yt, 2*scale + yt])
+        ax.set_zlim3d([0*scale + zt, 4*scale + zt])
+        ax.scatter(points1[:, 0], points1[:, 2], points1[:, 1])
+        ax.scatter(points2[:, 0], points2[:, 2], points2[:, 1])
+
+        ax = fig.add_subplot(3, 3, 1, projection='3d')
+        xt, yt, zt = translate
+        ax.set_xlim3d([-2*scale + xt, 2*scale + xt])
+        ax.set_ylim3d([-2*scale + yt, 2*scale + yt])
+        ax.set_zlim3d([0*scale + zt, 4*scale + zt])
+        ax.scatter(points1[:, 0], points1[:, 2], points1[:, 1])
+        ax.scatter(points2[:, 0], points2[:, 2], points2[:, 1])
 
 """Metric and visualization."""
 def compute_rre(R_est: np.ndarray, R_gt: np.ndarray):
