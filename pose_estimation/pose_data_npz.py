@@ -244,7 +244,7 @@ class PoseDataNPZSegmentationTorch(torch.utils.data.Dataset):
         scene = self.data[key]
 
         color = scene["color"]
-        meta = self.data.meta(key)
+        # meta = self.data.meta(key)
         label = self.data.label(key)
 
         if label is None:
