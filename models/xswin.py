@@ -134,7 +134,7 @@ class XNetSwinTransformer(_Network):
                     mlp_dim = int(middle_stage_features * mlp_ratio),
                     dropout = dropout,
                     attention_dropout = attention_dropout,
-                    norm_layer = partial(nn.LayerNorm, eps=1e-2),
+                    norm_layer = partial(nn.LayerNorm, eps=1e-5),
                 )
             )
         self.middle = nn.Sequential(*self.middle) if len(self.middle) > 0 else nn.Identity()
