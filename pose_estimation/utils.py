@@ -186,7 +186,7 @@ def compare_points(points1, points2, scale=1, translate=[0, 0, 0]):
     ax.scatter(points1[:, 0], points1[:, 2], points1[:, 1])
     ax.scatter(points2[:, 0], points2[:, 2], points2[:, 1])
 
-def compare_points_triplet(source, target, prediction, truth, scale=1, translate=[0, 0, 0], figure_kwargs={}):
+def compare_points_triplet(source, target, prediction, truth, scale=1, translate=[0, 0, 0], figsize=(20, 20)):
     fig = plt.figure()
 
     points = [
@@ -195,11 +195,11 @@ def compare_points_triplet(source, target, prediction, truth, scale=1, translate
         (source @ truth[:3, :3].T + truth[:3, 3], source @ prediction[:3, :3].T + prediction[:3, 3]),
     ]
 
-    plt.figure(**figure_kwargs)
+    plt.figure(figsize=figsize)
     for i in range(3):
 
         points1, points2 = points[i]
-        ax = fig.add_subplot(1, 3, i+1, projection='3d')
+        ax = plt.subplot(1, 3, i+1, projection='3d')
         xt, yt, zt = translate
         ax.set_xlim3d([-2*scale + xt, 2*scale + xt])
         ax.set_ylim3d([-2*scale + yt, 2*scale + yt])
