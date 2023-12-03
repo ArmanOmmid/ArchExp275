@@ -29,7 +29,7 @@ def back_project(depth, meta, mask=None, transforms=None, samples=None, world=Tr
         v, u = np.indices(depth.shape)
     else:
         v, u = np.nonzero(mask)
-
+        
     if samples is not None:
         v, u = sample_indices(v, u, samples)
         depth = depth[v, u]

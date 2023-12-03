@@ -222,8 +222,32 @@ class PoseDataNPZTorch(torch.utils.data.Dataset):
 
         return source_pcd, target_pcd, color, mask_indices, pose, sym, np.array(key), obj_id
 
-def predict(model, points, color, mask_info):
-    model.eval()
-    with torch.no_grad():
-        prediction, transforms = model(points, color, mask_info)
-    return prediction
+
+class PoseDataNPZSegmentationTorch(torch.utils.data.Dataset):
+    def __init__(self, npz_data_path, data_path=None, models_path=None, 
+                 levels=None, split=None): 
+
+        self.data = PoseDataNPZ(npz_data_path, data_path, models_path, levels, split)
+        self.num_classes = len(self.data.info)
+
+        self._data = []
+
+        for i, key in enumerate(self.data.keylist):
+            self._data.append((key))
+
+    def __len__(self):
+        return len(self.data)
+        
+    def __getitem__(self, i):
+        key = self._data[i]
+
+        scene = self.data[key]
+
+        color = scene["color"]
+        meta = self.data.meta(key)
+        label = self.data.label(key)
+
+        if label is None:
+            label = 0 # Ignore label if testing
+
+        return color, label
