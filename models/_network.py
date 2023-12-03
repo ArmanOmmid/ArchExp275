@@ -11,13 +11,47 @@ class _Network(nn.Module, ABC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def load(self, load_path: str=None, map_location: str="cpu"):
+    def load(self, load_path: str=None, map_location: str="cpu", unexpected_ok=False, missing_ok=False):
         """
         Load weights if weights were specified
         """
         if not load_path: return
         load_path = load_path.split(".")[0] + WEIGHTS_EXTENSION
-        self.load_state_dict(torch.load(load_path, map_location=torch.device(map_location)))
+
+        strict = not (unexpected_ok or missing_ok)
+
+        if not strict:
+            model_state_dict = self.state_dict()
+            loaded_state_dict = torch.load(load_path, map_location=torch.device(map_location))
+
+            unexpected_keys = [k for k in loaded_state_dict.keys() if k not in model_state_dict]
+            missing_keys = [k for k in model_state_dict.keys() if k not in loaded_state_dict]
+
+            if len(unexpected_keys) > 0:
+                if missing_ok:
+                    print("Unexpected Keys Permitted")
+                    print(unexpected_keys)
+                else:
+                    print("Unexpected Keys Error")
+                    print(unexpected_keys)
+                    raise KeyError()
+            if len(missing_keys) > 0:
+                if missing_ok:
+                    print("Missing Keys Permitted")
+                    print(missing_keys)
+                else:
+                    print("Missing Keys Error")
+                    print(missing_keys)
+                    raise KeyError()
+
+        self.load_state_dict(loaded_state_dict, strict=strict)
+
+
+    print("Missing keys:", missing_keys)
+    print("Unexpected keys:", unexpected_keys)
+
+# Optionally, load the state dict (ignoring missing/unexpected keys)
+model.load_state_dict(saved_state_dict, strict=False)
 
     def save(self, save_path: str):
         """
