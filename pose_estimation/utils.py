@@ -195,27 +195,11 @@ def compare_points_triplet(source, target, prediction, truth, scale=1, translate
         (source @ truth[:3, :3].T + truth[:3, 3], source @ prediction[:3, :3].T + prediction[:3, 3]),
     ]
 
+    plt.figure(figsize=(15, 10))
     for i in range(3):
 
         points1, points2 = points[i]
-        fig = plt.figure()
-        ax = fig.add_subplot(3, 3, 1, projection='3d')
-        xt, yt, zt = translate
-        ax.set_xlim3d([-2*scale + xt, 2*scale + xt])
-        ax.set_ylim3d([-2*scale + yt, 2*scale + yt])
-        ax.set_zlim3d([0*scale + zt, 4*scale + zt])
-        ax.scatter(points1[:, 0], points1[:, 2], points1[:, 1])
-        ax.scatter(points2[:, 0], points2[:, 2], points2[:, 1])
-
-        ax = fig.add_subplot(3, 2, 1, projection='3d')
-        xt, yt, zt = translate
-        ax.set_xlim3d([-2*scale + xt, 2*scale + xt])
-        ax.set_ylim3d([-2*scale + yt, 2*scale + yt])
-        ax.set_zlim3d([0*scale + zt, 4*scale + zt])
-        ax.scatter(points1[:, 0], points1[:, 2], points1[:, 1])
-        ax.scatter(points2[:, 0], points2[:, 2], points2[:, 1])
-
-        ax = fig.add_subplot(3, 3, 1, projection='3d')
+        ax = fig.add_subplot(3, 3, i, projection='3d')
         xt, yt, zt = translate
         ax.set_xlim3d([-2*scale + xt, 2*scale + xt])
         ax.set_ylim3d([-2*scale + yt, 2*scale + yt])
