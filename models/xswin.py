@@ -208,8 +208,6 @@ class XNetSwinTransformer(_Network):
             x = self.patching(conv_residual)
         else:
             x = self.patching(x)
-    
-        x = self.patching(conv_residual) # B C H W -> B H W C
         
         residuals = []
         for i in range(0, len(self.encoder), 2):
