@@ -195,11 +195,11 @@ def compare_points_triplet(source, target, prediction, truth, scale=1, translate
         (source @ truth[:3, :3].T + truth[:3, 3], source @ prediction[:3, :3].T + prediction[:3, 3]),
     ]
 
-    plt.figure(figsize=(15, 10))
+    plt.figure()
     for i in range(3):
 
         points1, points2 = points[i]
-        ax = fig.add_subplot(3, 3, i, projection='3d')
+        ax = fig.add_subplot(1, 3, i+1, projection='3d')
         xt, yt, zt = translate
         ax.set_xlim3d([-2*scale + xt, 2*scale + xt])
         ax.set_ylim3d([-2*scale + yt, 2*scale + yt])
