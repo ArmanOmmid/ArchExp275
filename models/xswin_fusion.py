@@ -120,6 +120,7 @@ class XSwinFusion(_Network):
             nn.BatchNorm1d(16),
             nn.LeakyReLU(),
             *representation,
+            nn.Tanh(),
             Permute([0, 2, 1]), # B C L -> B L C
         )
 
