@@ -63,23 +63,23 @@ class XSwinFusion(_Network):
         )
 
         self.mix = nn.Sequential(
-            Permute([0, 2, 1]), # B L C 
-            ViTEncoderBlock(num_heads=3, hidden_dim=feature_dims*3, mlp_dim=feature_dims*3,
-                            dropout=0.0, attention_dropout=0.0,
-                            norm_layer= partial(nn.LayerNorm, eps=1e-6)),
-            nn.LeakyReLU(),
-            Permute([0, 2, 1]), # B C L
             nn.Conv1d(feature_dims*3, feature_dims, 1),
             nn.BatchNorm1d(feature_dims),
             nn.LeakyReLU(),
-            Permute([0, 2, 1]), # B L C
-            ViTEncoderBlock(num_heads=4, hidden_dim=feature_dims, mlp_dim=feature_dims,
+            Permute([0, 2, 1]), # B L C 
+            ViTEncoderBlock(num_heads=feature_dims//16, hidden_dim=feature_dims, mlp_dim=feature_dims,
                             dropout=0.0, attention_dropout=0.0,
                             norm_layer=partial(nn.LayerNorm, eps=1e-6)),
-            nn.LeakyReLU(),
+            ViTEncoderBlock(num_heads=feature_dims//8, hidden_dim=feature_dims, mlp_dim=feature_dims,
+                            dropout=0.0, attention_dropout=0.0,
+                            norm_layer=partial(nn.LayerNorm, eps=1e-6)),
+            ViTEncoderBlock(num_heads=feature_dims//4, hidden_dim=feature_dims, mlp_dim=feature_dims,
+                            dropout=0.0, attention_dropout=0.0,
+                            norm_layer=partial(nn.LayerNorm, eps=1e-6)),
             Permute([0, 2, 1]), # B C L
             nn.Conv1d(feature_dims, feature_dims, 1),
             nn.BatchNorm1d(feature_dims),
+            nn.LeakyReLU(),
         )
 
         representation = [
@@ -98,7 +98,7 @@ class XSwinFusion(_Network):
             nn.LeakyReLU(),
             nn.Conv1d(16, 16, 1),
             nn.BatchNorm1d(16),
-            nn.LeakyReLU(),
+            nn.GELU(),
             *representation,
             Permute([0, 2, 1]), # B C L -> B L C
         )
