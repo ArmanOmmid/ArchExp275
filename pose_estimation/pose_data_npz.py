@@ -243,11 +243,12 @@ class PoseDataNPZSegmentationTorch(torch.utils.data.Dataset):
 
         scene = self.data[key]
 
-        color = scene["color"]
+        color = scene["color"] / 255
+        color = torch.permute(color, (2, 0, 1))
         # meta = self.data.meta(key)
         label = self.data.label(key)
 
         if label is None:
             label = 0 # Ignore label if testing
 
-        return color, label, np.array(key)
+        return color.float(), label.float(), np.array(key)
