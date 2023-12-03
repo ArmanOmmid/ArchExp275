@@ -120,7 +120,7 @@ class XSwinFusion(_Network):
             nn.BatchNorm1d(16),
             nn.LeakyReLU(),
             *representation,
-            nn.Tanh(), # SO3 and quaternions are all [-1, 1] components
+            # nn.Tanh(), # SO3 and quaternions are all [-1, 1] components
             Permute([0, 2, 1]), # B C L -> B L C
         )
 
