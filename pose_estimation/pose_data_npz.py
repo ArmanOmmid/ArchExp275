@@ -250,4 +250,4 @@ class PoseDataNPZSegmentationTorch(torch.utils.data.Dataset):
         if label is None:
             label = 0 # Ignore label if testing
 
-        return color, label
+        return color, label, np.array(key)
