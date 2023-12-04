@@ -27,8 +27,11 @@ class PoseDataNPZ():
             # NOTE : You cannot INTERNALLY do levels or splits this way
 
         self.npz(npz_data_path)
-        
-        self.objects_npz_path = os.path.join(npz_data_path, "objects.npz")
+        print(object_caching)
+        if isinstance(object_caching, str):
+            self.objects_npz_path = object_caching
+        else:
+            self.objects_npz_path = os.path.join(npz_data_path, "objects.npz")
         if os.path.exists(self.objects_npz_path):
             # Cache Handlers
             if  self.objects_npz_path not in self._npz_handlers_cache:
