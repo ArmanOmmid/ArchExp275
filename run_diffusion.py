@@ -126,7 +126,7 @@ def main(args):
     global_stages = 3
     input_size = [latent_size, latent_size]
     final_downsample = False
-    residual_cross_attention = True
+    residual_cross_attention = False
     input_channels = 4
     output_channels = 8
     class_dropout = 0.1
