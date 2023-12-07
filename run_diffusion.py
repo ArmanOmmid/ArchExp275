@@ -158,7 +158,7 @@ def main(args):
     }
 
     # print(model_configs)
-    model_summary = summary(model, input_size=[1, input_channels, *input_size], depth=4)
+    model_summary = summary(model, input_size=([1, input_channels, *input_size], 1, 1), depth=4)
     # print(model)
     # print(args)
     if not args.experiment_dir:
