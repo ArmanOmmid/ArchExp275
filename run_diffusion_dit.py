@@ -99,7 +99,7 @@ def main(args):
     else:
         os.makedirs(args.results_dir, exist_ok=True)
         experiment_index = len(glob(f"{args.results_dir}/*"))
-        model_string_name = 'xswin'
+        model_string_name = 'dit'
         experiment_dir = f"{args.results_dir}/{experiment_index:03d}-{model_string_name}"
         os.makedirs(experiment_dir, exist_ok=True)
         logger = create_logger(experiment_dir)
