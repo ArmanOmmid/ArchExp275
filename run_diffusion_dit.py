@@ -118,7 +118,7 @@ def main(args):
     )
 
     # print(model_configs)
-    model_summary = summary(model, input_size=[1, model.hidden_size, latent_size, latent_size], depth=4)
+    model_summary = summary(model, input_size=[1, model.in_channels, latent_size, latent_size], depth=4)
     # print(model)
     # print(args)
     if not args.experiment_dir:
