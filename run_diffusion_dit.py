@@ -117,10 +117,8 @@ def main(args):
         num_classes=args.num_classes
     )
 
-    print(model)
-
     # print(model_configs)
-    model_summary = summary(model, input_size=[1, 16*16, *latent_size], depth=4)
+    model_summary = summary(model, input_size=[1, 16*16, latent_size, latent_size], depth=4)
     # print(model)
     # print(args)
     if not args.experiment_dir:
