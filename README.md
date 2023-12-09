@@ -3,10 +3,10 @@
 
 #### Requirements
 `
-!pip install timm
-!pip install diffusers
-!pip install accelerate
-!pip install torchinfo
+!pip install timm <br>
+!pip install diffusers <br>
+!pip install accelerate <br>
+!pip install torchinfo <br>
 `
 
 ### Custom Models
