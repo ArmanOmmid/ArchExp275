@@ -112,7 +112,7 @@ def main(args):
     latent_size = args.image_size // 8    
     
     
-    model = DiT_models[args.model](
+    model = UViT_models[args.model](
         input_size=latent_size,
         num_classes=args.num_classes
     )
