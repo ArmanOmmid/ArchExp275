@@ -1,6 +1,15 @@
 # CSE 291B Project
 # Hierarchical U-Net Vision Transformers with Residual Cross Attention for Latent Diffusion
 
+## Setup
+
+First, download and set up the repo:
+
+```bash
+git clone https://github.com/ArmanOmmid/XSwinDiffusion.git
+cd DiT
+```
+
 #### Requirements
 ```bash
 pip install timm
