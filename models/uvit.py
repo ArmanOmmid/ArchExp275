@@ -98,9 +98,9 @@ class LabelEmbedder(nn.Module):
 #                                 Core DiT Model                                #
 #################################################################################
 
-class DiTBlock(nn.Module):
+class UViTBlock(nn.Module):
     """
-    A DiT block with adaptive layer norm zero (adaLN-Zero) conditioning.
+    A UViT block with adaptive layer norm zero (adaLN-Zero) conditioning.
     """
     def __init__(self, hidden_size, num_heads, mlp_ratio=4.0, **block_kwargs):
         super().__init__()
@@ -142,7 +142,7 @@ class FinalLayer(nn.Module):
         return x
 
 
-class DiT(nn.Module):
+class UViT(nn.Module):
     """
     Diffusion model with a Transformer backbone.
     """
@@ -175,7 +175,7 @@ class DiT(nn.Module):
         self.pos_embed = nn.Parameter(torch.zeros(1, num_patches, hidden_size), requires_grad=False)
 
         self.blocks = nn.ModuleList([
-            DiTBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio) for _ in range(depth)
+            UViTBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio) for _ in range(depth)
         ])
 
         # For UViT, we need to downsample after concatenation
@@ -347,46 +347,46 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
 #                                   DiT Configs                                  #
 #################################################################################
 
-def DiT_XL_2(**kwargs):
-    return DiT(depth=28, hidden_size=1152, patch_size=2, num_heads=16, **kwargs)
+def UViT_XL_2(**kwargs):
+    return UViT(depth=28, hidden_size=1152, patch_size=2, num_heads=16, **kwargs)
 
-def DiT_XL_4(**kwargs):
-    return DiT(depth=28, hidden_size=1152, patch_size=4, num_heads=16, **kwargs)
+def UViT_XL_4(**kwargs):
+    return UViT(depth=28, hidden_size=1152, patch_size=4, num_heads=16, **kwargs)
 
-def DiT_XL_8(**kwargs):
-    return DiT(depth=28, hidden_size=1152, patch_size=8, num_heads=16, **kwargs)
+def UViT_XL_8(**kwargs):
+    return UViT(depth=28, hidden_size=1152, patch_size=8, num_heads=16, **kwargs)
 
-def DiT_L_2(**kwargs):
-    return DiT(depth=24, hidden_size=1024, patch_size=2, num_heads=16, **kwargs)
+def UViT_L_2(**kwargs):
+    return UViT(depth=24, hidden_size=1024, patch_size=2, num_heads=16, **kwargs)
 
-def DiT_L_4(**kwargs):
-    return DiT(depth=24, hidden_size=1024, patch_size=4, num_heads=16, **kwargs)
+def UViT_L_4(**kwargs):
+    return UViT(depth=24, hidden_size=1024, patch_size=4, num_heads=16, **kwargs)
 
-def DiT_L_8(**kwargs):
-    return DiT(depth=24, hidden_size=1024, patch_size=8, num_heads=16, **kwargs)
+def UViT_L_8(**kwargs):
+    return UViT(depth=24, hidden_size=1024, patch_size=8, num_heads=16, **kwargs)
 
-def DiT_B_2(**kwargs):
-    return DiT(depth=12, hidden_size=768, patch_size=2, num_heads=12, **kwargs)
+def UViT_B_2(**kwargs):
+    return UViT(depth=12, hidden_size=768, patch_size=2, num_heads=12, **kwargs)
 
-def DiT_B_4(**kwargs):
-    return DiT(depth=12, hidden_size=768, patch_size=4, num_heads=12, **kwargs)
+def UViT_B_4(**kwargs):
+    return UViT(depth=12, hidden_size=768, patch_size=4, num_heads=12, **kwargs)
 
-def DiT_B_8(**kwargs):
-    return DiT(depth=12, hidden_size=768, patch_size=8, num_heads=12, **kwargs)
+def UViT_B_8(**kwargs):
+    return UViT(depth=12, hidden_size=768, patch_size=8, num_heads=12, **kwargs)
 
-def DiT_S_2(**kwargs):
-    return DiT(depth=12, hidden_size=384, patch_size=2, num_heads=6, **kwargs)
+def UViT_S_2(**kwargs):
+    return UViT(depth=12, hidden_size=384, patch_size=2, num_heads=6, **kwargs)
 
-def DiT_S_4(**kwargs):
-    return DiT(depth=12, hidden_size=384, patch_size=4, num_heads=6, **kwargs)
+def UViT_S_4(**kwargs):
+    return UViT(depth=12, hidden_size=384, patch_size=4, num_heads=6, **kwargs)
 
-def DiT_S_8(**kwargs):
-    return DiT(depth=12, hidden_size=384, patch_size=8, num_heads=6, **kwargs)
+def UViT_S_8(**kwargs):
+    return UViT(depth=12, hidden_size=384, patch_size=8, num_heads=6, **kwargs)
 
 
 DiT_models = {
-    'DiT-XL/2': DiT_XL_2,  'DiT-XL/4': DiT_XL_4,  'DiT-XL/8': DiT_XL_8,
-    'DiT-L/2':  DiT_L_2,   'DiT-L/4':  DiT_L_4,   'DiT-L/8':  DiT_L_8,
-    'DiT-B/2':  DiT_B_2,   'DiT-B/4':  DiT_B_4,   'DiT-B/8':  DiT_B_8,
-    'DiT-S/2':  DiT_S_2,   'DiT-S/4':  DiT_S_4,   'DiT-S/8':  DiT_S_8,
+    'UViT-XL/2': UViT_XL_2,  'UViT-XL/4': UViT_XL_4,  'UViT-XL/8': UViT_XL_8,
+    'UViT-L/2':  UViT_L_2,   'UViT-L/4':  UViT_L_4,   'UViT-L/8':  UViT_L_8,
+    'UViT-B/2':  UViT_B_2,   'UViT-B/4':  UViT_B_4,   'UViT-B/8':  UViT_B_8,
+    'UViT-S/2':  UViT_S_2,   'UViT-S/4':  UViT_S_4,   'UViT-S/8':  UViT_S_8,
 }
