@@ -260,7 +260,7 @@ class DiT(nn.Module):
         encoder_features = []
         for i, block in enumerate(self.blocks):
             if i > self.decoders_n: # Skip Connection
-                x = self.pointwise(torch.cat((x, encoder_features[-(i - self.decoders_n)])))
+                x = self.pointwise(torch.cat((x, encoder_features[(self.decoders_n - i)]), dim=-1))
             x = block(x, c)                      # (N, T, D)
             if i < self.encoders_n: # Save Encoder Features
                 encoder_features.append(x)
