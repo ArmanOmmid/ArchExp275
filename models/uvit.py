@@ -269,6 +269,7 @@ class UViT(nn.Module):
                 x = self.pointwise[(i - self.decoders_n - 1)](torch.cat((x, encoder_features[(self.decoders_n - i)]), dim=-1))
             x = block(x, c)                      # (N, T, D)
             if i < self.encoders_n: # Save Encoder Features
+                print(i)
                 encoder_features.append(x)
 
         x = self.final_layer(x, c)                # (N, T, patch_size ** 2 * out_channels)
