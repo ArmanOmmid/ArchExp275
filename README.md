@@ -28,15 +28,18 @@ pip install torchinfo
 - XSwinDiffusion
   - Location: ```/models/xswin_diffusion.py```
   - Relevant Custom Modules: ```/models/modules/modulated```
+  - Run Script: ```run_diffusion.py```
   - Notes: Our Conditioning Modulated Denoising Backbone
 
 ### Baseline Models
 - DiT
   - Location: ```/models/dit.py```
   - Relevant Modules: None
+  - Run Script: ```run_diffusion_dit.py```
   - Notes: The original DiT Implementation to compare with
 
 - UViT
   - Location: ```/models/uvit.py```
   - Relevant Modules: None
+  - Run Script: ```run_diffusion_uvit.py```
   - Notes: *Actually a DiT with UViT based skip connections. There are subtle differences.
