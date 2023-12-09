@@ -384,7 +384,7 @@ def UViT_S_8(**kwargs):
     return UViT(depth=12, hidden_size=384, patch_size=8, num_heads=6, **kwargs)
 
 
-DiT_models = {
+UViT_models = {
     'UViT-XL/2': UViT_XL_2,  'UViT-XL/4': UViT_XL_4,  'UViT-XL/8': UViT_XL_8,
     'UViT-L/2':  UViT_L_2,   'UViT-L/4':  UViT_L_4,   'UViT-L/8':  UViT_L_8,
     'UViT-B/2':  UViT_B_2,   'UViT-B/4':  UViT_B_4,   'UViT-B/8':  UViT_B_8,

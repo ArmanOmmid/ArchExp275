@@ -23,7 +23,7 @@ import json
 from diffusers.models import AutoencoderKL
 from diffusion import create_diffusion
 from models.xswin_diffusion import XNetSwinTransformerDiffusion
-from models.dit import DiT_models
+from models.dit import UViT_models
 
 # Profiling
 from torch.profiler import profile, record_function, ProfilerActivity
@@ -226,7 +226,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-path", type=str, required=True)
     parser.add_argument("--results-dir", type=str, default="results")
-    parser.add_argument("--model", type=str, choices=list(DiT_models.keys()), default="DiT-XL/2")
+    parser.add_argument("--model", type=str, choices=list(UViT_models.keys()), default="UViT-XL/2")
     parser.add_argument("--image-size", type=int, choices=[32, 64, 128, 256, 512], default=256)
     parser.add_argument("--num-classes", type=int, default=1000)
     parser.add_argument("--epochs", type=int, default=1400)
