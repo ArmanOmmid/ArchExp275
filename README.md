@@ -15,6 +15,7 @@ pip install timm
 pip install diffusers
 pip install accelerate
 pip install torchinfo
+pip install --user scipy==1.11.1
 ```
 
 ## How to Run our Code:
