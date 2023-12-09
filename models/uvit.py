@@ -183,7 +183,7 @@ class UViT(nn.Module):
             nn.Linear(hidden_size*2, hidden_size) for _ in range(depth//2)
         ])
         self.depth = depth
-        self.encoders_n = (self.depth+1) // 2
+        self.encoders_n = (self.depth) // 2
         self.decoders_n = self.encoders_n + (self.depth+1)%2
 
         self.final_layer = FinalLayer(hidden_size, patch_size, self.out_channels)
