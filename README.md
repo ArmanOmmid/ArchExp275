@@ -2,12 +2,12 @@
 # Hierarchical U-Net Vision Transformers with Residual Cross Attention for Latent Diffusion
 
 #### Requirements
-`
-!pip install timm <br>
-!pip install diffusers <br>
-!pip install accelerate <br>
-!pip install torchinfo <br>
-`
+```bash
+pip install timm
+pip install diffusers
+pip install accelerate
+pip install torchinfo
+```
 
 ### Custom Models
 - XSwin
