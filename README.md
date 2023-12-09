@@ -7,7 +7,6 @@ First, download and set up the repo:
 
 ```bash
 git clone https://github.com/ArmanOmmid/XSwinDiffusion.git
-cd DiT
 ```
 
 #### Requirements
