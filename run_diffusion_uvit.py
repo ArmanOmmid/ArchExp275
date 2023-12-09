@@ -23,7 +23,7 @@ import json
 from diffusers.models import AutoencoderKL
 from diffusion import create_diffusion
 from models.xswin_diffusion import XNetSwinTransformerDiffusion
-from models.dit import UViT_models
+from models.uvit import UViT_models
 
 # Profiling
 from torch.profiler import profile, record_function, ProfilerActivity
