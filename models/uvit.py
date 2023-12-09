@@ -102,7 +102,7 @@ class UViTBlock(nn.Module):
     """
     A UViT block with adaptive layer norm zero (adaLN-Zero) conditioning.
     """
-    def __init__(self, hidden_size, num_heads, mlp_ratio=4.0, **block_kwargs):
+    def __init__(self, hidden_size, num_heads, mlp_ratio=4.0, skip=False, **block_kwargs):
         super().__init__()
         self.norm1 = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
         self.attn = Attention(hidden_size, num_heads=num_heads, qkv_bias=True, **block_kwargs)
@@ -114,13 +114,15 @@ class UViTBlock(nn.Module):
             nn.SiLU(),
             nn.Linear(hidden_size, 6 * hidden_size, bias=True)
         )
+        self.skip_linear = nn.Linear(2*hidden_size, hidden_size) if skip else None
 
-    def forward(self, x, c):
+    def forward(self, x, c, skip=None):
+        if self.skip_linear is not None:
+            x = self.skip_linear(torch.cat([x, skip], dim=-1))
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
         x = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
         x = x + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm2(x), shift_mlp, scale_mlp))
         return x
-
 
 class FinalLayer(nn.Module):
     """
@@ -174,17 +176,21 @@ class UViT(nn.Module):
         # Will use fixed sin-cos embedding:
         self.pos_embed = nn.Parameter(torch.zeros(1, num_patches, hidden_size), requires_grad=False)
 
-        self.blocks = nn.ModuleList([
-            UViTBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio) for _ in range(depth)
-        ])
-
-        # For UViT, we need to downsample after concatenation
-        self.pointwise = nn.ModuleList([
-            nn.Linear(hidden_size*2, hidden_size) for _ in range((depth-1)//2)
-        ])
         self.depth = depth
         self.encoders_n = (self.depth-1) // 2
         self.decoders_n = self.encoders_n + (self.depth+1)%2
+        
+        block_list = []
+        for i in range(depth):
+            if i > self.decoders_n:
+                block_list.append(
+                    UViTBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio, skip=True)
+                )
+            else:
+                block_list.append(
+                    UViTBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio, skip=False)
+                )
+        self.blocks = nn.ModuleList(block_list)
 
         self.final_layer = FinalLayer(hidden_size, patch_size, self.out_channels)
         self.initialize_weights()
@@ -257,13 +263,12 @@ class UViT(nn.Module):
         y = self.y_embedder(y, self.training)    # (N, D)
         c = t + y                                # (N, D)
 
-        encoder_features = []
+        skips = []
         for i, block in enumerate(self.blocks):
-            if i > self.decoders_n: # Skip Connection
-                x = self.pointwise[(i - self.decoders_n - 1)](torch.cat((x, encoder_features[(self.decoders_n - i)]), dim=-1))
-            x = block(x, c)                      # (N, T, D)
+            skip = skips.pop() if i > self.decoders_n else None
+            x = block(x, c, skip=skip)                      # (N, T, D)
             if i < self.encoders_n: # Save Encoder Features
-                encoder_features.append(x)
+                skips.append(x)
 
         x = self.final_layer(x, c)                # (N, T, patch_size ** 2 * out_channels)
         x = self.unpatchify(x)                   # (N, out_channels, H, W)
