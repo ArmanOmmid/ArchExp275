@@ -21,7 +21,7 @@ pip install torchinfo
 
 ### Custom Models
 - XSwin
-  - Location: ```/models/xswin.py``
+  - Location: ```/models/xswin.py```
   - Relevant Custom Modules: ```/models/modules/normal```
   - Notes: Our Segmentation Backbone
 
