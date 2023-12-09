@@ -257,6 +257,9 @@ class UViT(nn.Module):
         y = self.y_embedder(y, self.training)    # (N, D)
         c = t + y                                # (N, D)
 
+        print(self.blocks)
+        print(self.pointwise)
+
         encoder_features = []
         for i, block in enumerate(self.blocks):
             if i > self.decoders_n: # Skip Connection
@@ -270,6 +273,7 @@ class UViT(nn.Module):
 
         x = self.final_layer(x, c)                # (N, T, patch_size ** 2 * out_channels)
         x = self.unpatchify(x)                   # (N, out_channels, H, W)
+        exit(0)
         return x
 
     def forward_with_cfg(self, x, t, y, cfg_scale):
