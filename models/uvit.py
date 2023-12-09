@@ -180,7 +180,7 @@ class UViT(nn.Module):
 
         # For UViT, we need to downsample after concatenation
         self.pointwise = nn.ModuleList([
-            nn.Linear(hidden_size*2, hidden_size) for _ in range(depth//2)
+            nn.Linear(hidden_size*2, hidden_size) for _ in range((depth-1)//2)
         ])
         self.depth = depth
         self.encoders_n = (self.depth-1) // 2
