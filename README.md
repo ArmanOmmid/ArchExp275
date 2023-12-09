@@ -1,4 +1,3 @@
-# CSE 291B Project
 # Hierarchical U-Net Vision Transformers with Residual Cross Attention for Latent Diffusion
 
 ## Setup
