@@ -260,10 +260,8 @@ class UViT(nn.Module):
         encoder_features = []
         for i, block in enumerate(self.blocks):
             if i > self.decoders_n: # Skip Connection
-                print(self.pointwise[(i - self.decoders_n - 1)])
                 x = self.pointwise[(i - self.decoders_n - 1)](torch.cat((x, encoder_features[(self.decoders_n - i)]), dim=-1))
             x = block(x, c)                      # (N, T, D)
-            print(block)
             if i < self.encoders_n: # Save Encoder Features
                 encoder_features.append(x)
 
