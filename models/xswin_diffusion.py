@@ -18,7 +18,7 @@ class XNetSwinTransformerDiffusion(_Network):
     Args:
         patch_size (List[int]): Patch size.
         embed_dim (int): Patch embedding dimension.
-        depths (List(int)): Depth of each Swin Transformer layer.
+        depths (List(int)): Depth of each XSwin Transformer layer.
         num_heads (List(int)): Number of attention heads in different layers.
         window_size (List[int]): Window size.
         mlp_ratio (float): Ratio of mlp hidden dim to embedding dim. Default: 4.0.
@@ -26,7 +26,7 @@ class XNetSwinTransformerDiffusion(_Network):
         attention_dropout (float): Attention dropout rate. Default: 0.0.
         stochastic_depth_prob (float): Stochastic depth rate. Default: 0.1.
         num_classes (int): Number of classes for classification head. Default: 1000.
-        block (nn.Module, optional): SwinTransformer Block. Default: None.
+        block (nn.Module, optional): XSwinTransformer Block. Default: None.
         norm_layer (nn.Module, optional): Normalization layer. Default: None.
 
         global_stages (int): Global Attention ViT Layers between Encoder and Decoder
