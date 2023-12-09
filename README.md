@@ -21,22 +21,22 @@ pip install torchinfo
 
 ### Custom Models
 - XSwin
-  - Location: /models/xswin.py
-  - Relevant Custom Modules: /models/modules/normal
+  - Location: ```/models/xswin.py``
+  - Relevant Custom Modules: ```/models/modules/normal```
   - Notes: Our Segmentation Backbone
 
 - XSwinDiffusion
-  - Location: /models/xswin_diffusion.py
-  - Relevant Custom Modules: /models/modules/modulated
+  - Location: ```/models/xswin_diffusion.py```
+  - Relevant Custom Modules: ```/models/modules/modulated```
   - Notes: Our Conditioning Modulated Denoising Backbone
 
 ### Baseline Models
 - DiT
-  - Location: /models/dit.py
+  - Location: ```/models/dit.py```
   - Relevant Modules: None
   - Notes: The original DiT Implementation to compare with
 
 - UViT
-  - Location: /models/uvit.py
+  - Location: ```/models/uvit.py```
   - Relevant Modules: None
   - Notes: *Actually a DiT with UViT based skip connections. There are subtle differences.
