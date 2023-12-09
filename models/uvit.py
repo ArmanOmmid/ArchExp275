@@ -124,7 +124,7 @@ class UViTBlock(nn.Module):
 
 class FinalLayer(nn.Module):
     """
-    The final layer of DiT.
+    The final layer of UViT.
     """
     def __init__(self, hidden_size, patch_size, out_channels):
         super().__init__()
@@ -144,7 +144,7 @@ class FinalLayer(nn.Module):
 
 class UViT(nn.Module):
     """
-    Diffusion model with a Transformer backbone.
+    Diffusion model with a UViT Transformer backbone.
     """
     def __init__(
         self,
@@ -180,7 +180,7 @@ class UViT(nn.Module):
 
         # For UViT, we need to downsample after concatenation
         self.pointwise = nn.ModuleList([
-            nn.Linear(hidden_size*2, hidden_size) for _ in range(depth)
+            nn.Linear(hidden_size*2, hidden_size) for _ in range(depth//2)
         ])
         self.depth = depth
         self.encoders_n = (self.depth+1) // 2
@@ -214,7 +214,7 @@ class UViT(nn.Module):
         nn.init.normal_(self.t_embedder.mlp[0].weight, std=0.02)
         nn.init.normal_(self.t_embedder.mlp[2].weight, std=0.02)
 
-        # Zero-out adaLN modulation layers in DiT blocks:
+        # Zero-out adaLN modulation layers in UViT blocks:
         for block in self.blocks:
             nn.init.constant_(block.adaLN_modulation[-1].weight, 0)
             nn.init.constant_(block.adaLN_modulation[-1].bias, 0)
@@ -242,7 +242,7 @@ class UViT(nn.Module):
 
     def forward(self, x, t=None, y=None):
         """
-        Forward pass of DiT.
+        Forward pass of UViT.
         x: (N, C, H, W) tensor of spatial inputs (images or latent representations of images)
         t: (N,) tensor of diffusion timesteps
         y: (N,) tensor of class labels
@@ -260,7 +260,7 @@ class UViT(nn.Module):
         encoder_features = []
         for i, block in enumerate(self.blocks):
             if i > self.decoders_n: # Skip Connection
-                x = self.pointwise(torch.cat((x, encoder_features[(self.decoders_n - i)]), dim=-1))
+                x = self.pointwise[(i - self.decoders_n - 1)](torch.cat((x, encoder_features[(self.decoders_n - i)]), dim=-1))
             x = block(x, c)                      # (N, T, D)
             if i < self.encoders_n: # Save Encoder Features
                 encoder_features.append(x)
@@ -271,7 +271,7 @@ class UViT(nn.Module):
 
     def forward_with_cfg(self, x, t, y, cfg_scale):
         """
-        Forward pass of DiT, but also batches the unconditional forward pass for classifier-free guidance.
+        Forward pass of UViT, but also batches the unconditional forward pass for classifier-free guidance.
         """
         # https://github.com/openai/glide-text2im/blob/main/notebooks/text2im.ipynb
         half = x[: len(x) // 2]
