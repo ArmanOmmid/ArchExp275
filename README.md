@@ -26,7 +26,7 @@ pip install torchinfo
 [Loss Comparison Notebook](https://colab.research.google.com/drive/1sqc2oGJ9_-K06B3DT1Bt3Z8-7fT0J-x_?usp=sharing)
 
 ### Evaluation Metrics
-[Evluation Metrics Notebook]()
+[Evluation Metrics Notebook](https://colab.research.google.com/drive/1TCTImMfSzC8sv7HxgZj-aaIEqfDryxWG?usp=sharing#scrollTo=ZbNCByBP_9XS)
 
 ### Custom Models
 - XSwin
