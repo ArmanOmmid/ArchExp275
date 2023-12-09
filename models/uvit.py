@@ -257,19 +257,14 @@ class UViT(nn.Module):
         y = self.y_embedder(y, self.training)    # (N, D)
         c = t + y                                # (N, D)
 
-        print(self.blocks)
-        print(self.pointwise)
-
         encoder_features = []
         for i, block in enumerate(self.blocks):
             if i > self.decoders_n: # Skip Connection
-                print(len(self.pointwise), len(encoder_features))
-                print(i - self.decoders_n - 1)
-                print(self.decoders_n - i)
+                print(self.pointwise[(i - self.decoders_n - 1)])
                 x = self.pointwise[(i - self.decoders_n - 1)](torch.cat((x, encoder_features[(self.decoders_n - i)]), dim=-1))
             x = block(x, c)                      # (N, T, D)
+            print(block)
             if i < self.encoders_n: # Save Encoder Features
-                print(i)
                 encoder_features.append(x)
 
         x = self.final_layer(x, c)                # (N, T, patch_size ** 2 * out_channels)
