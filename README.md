@@ -26,6 +26,9 @@ pip install --user scipy==1.11.1
 ### Loss Comparison
 [Loss Comparison Notebook](https://colab.research.google.com/drive/1sqc2oGJ9_-K06B3DT1Bt3Z8-7fT0J-x_?usp=sharing)
 
+### Inference Sampling
+[Inference Sampling Notebook](https://colab.research.google.com/drive/1vJE2atdZ2mLJd0d2ub7XV5-od5D_8H7H?usp=sharing)
+
 ### Evaluation Metrics
 [Evluation Metrics Notebook](https://colab.research.google.com/drive/1TCTImMfSzC8sv7HxgZj-aaIEqfDryxWG?usp=sharing#scrollTo=ZbNCByBP_9XS)
 
