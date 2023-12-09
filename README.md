@@ -1,9 +1,9 @@
 # CSE 291B Project
 # Hierarchical U-Net Vision Transformers with Residual Cross Attention for Latent Diffusion
 
-### Setup
+## Setup
 
-Download the Repository
+### Download the Repository
 
 ```bash
 git clone https://github.com/ArmanOmmid/XSwinDiffusion.git
@@ -17,15 +17,15 @@ pip install accelerate
 pip install torchinfo
 ```
 
-### How to Run our Code:
+## How to Run our Code:
 
-##### Diffusion Training
+### Diffusion Training
 [Diffusion Training Notebook](https://colab.research.google.com/drive/1DlS1C7BBMLJaIH7sshJ-3_CfDXneiI2x?usp=sharing)
 
-##### Loss Comparison
+### Loss Comparison
 [Loss Comparison Notebook](https://colab.research.google.com/drive/1sqc2oGJ9_-K06B3DT1Bt3Z8-7fT0J-x_?usp=sharing)
 
-##### Evaluation Metrics
+### Evaluation Metrics
 [Evluation Metrics Notebook](https://colab.research.google.com/drive/1sqc2oGJ9_-K06B3DT1Bt3Z8-7fT0J-x_?usp=sharing)
 
 ### Custom Models
