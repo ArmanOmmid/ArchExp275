@@ -13,8 +13,6 @@ from .modules import SwinTransformerBlockV2_Modulated, ViTEncoderBlock_Modulated
                         create_positional_embedding, initialize_weights, \
                         TimestepEmbedder, LabelEmbedder, initalize_diffusion, ConditionedSequential
 
-# TODO : Replace torch.permute() with (batch) dim agnostic Tensor.transpose()
-
 class XNetSwinTransformerDiffusion(_Network):
     """
     Args:
