@@ -62,3 +62,24 @@ pip install --user scipy==1.11.1
   - **Run Script:** ```run_diffusion_uvit.py```
   - **Description:** *Actually a DiT with UViT based skip connections. There are subtle differences.*
   - **Implementation:** *DiT with UNet structure by storing shallow "encoder" featuresand concatonating them with deep "decoder" features. After concatonation, they are passed through a linear layer for downsampling back to the original hidden dimension size as per the UViT design. The main differences between UDiT and UViT are namely that conditioning is done with additional sequence tokens with UViT while we use adaptive layer normalization modulation like with DiT. *
+
+## Auxilary Code
+
+### Diffusion Code
+- Diffusion Pipeline
+  - **Location:** ```/diffusion```
+  - **Description** *Diffusion Pipelining Code from OpenAI*
+- Miscellaneous Modules
+  - **Location:** ```/models/modules```
+    - ```conditioned_sequential.py``` : *Implementation of nn.Sequential with Conditioning Information*
+    - ```embeddings.py``` : *Implementation of time step and class label embeddings from DiT as well as our custom Modulator layer*
+    - ```initialize.py``` : *Weight initializers for various and specific layers*
+    - ```positional.py``` " *Positional Embeddings from FAIR*
+- Validation Code
+  - **Location:** ```/runners```, ```/data```
+  - **Description** : Validation code to validate the isolated XSwin backbone
+
+
+
+
+### Validation Code
