@@ -32,7 +32,7 @@ pip install --user scipy==1.11.1
 [Inference Sampling Notebook](https://colab.research.google.com/drive/1vJE2atdZ2mLJd0d2ub7XV5-od5D_8H7H?usp=sharing)
 
 ### Evaluation Metrics
-[Evluation Metrics Notebook](https://colab.research.google.com/drive/1TCTImMfSzC8sv7HxgZj-aaIEqfDryxWG?usp=sharing#scrollTo=ZbNCByBP_9XS)
+[Evaluation Metrics Notebook](https://colab.research.google.com/drive/1TCTImMfSzC8sv7HxgZj-aaIEqfDryxWG?usp=sharing#scrollTo=ZbNCByBP_9XS)
 
 ### Custom Models
 - XSwin
