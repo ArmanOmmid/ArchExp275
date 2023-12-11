@@ -78,8 +78,3 @@ pip install --user scipy==1.11.1
 - Validation Code
   - **Location:** ```/runners```, ```/data```
   - **Description** : Validation code to validate the isolated XSwin backbone
-
-
-
-
-### Validation Code
