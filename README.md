@@ -1,5 +1,5 @@
 # Hierarchical U-Net Vision Transformers with Residual Cross Attention for Latent Diffusion
-
+ 
 ## Authors
 Arman Ommid, Mayank Jain
 
