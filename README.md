@@ -1,7 +1,9 @@
 # Hierarchical U-Net Vision Transformers with Residual Cross Attention for Latent Diffusion
- 
+
 ## Authors
 Arman Ommid, Mayank Jain
+
+## [NeurIPs Style Project Paper](https://github.com/ArmanOmmid/XSwinDiffusion/blob/main/XSwinDiffusion.pdf)
 
 ## Setup
 
